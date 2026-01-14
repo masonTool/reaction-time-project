@@ -2,11 +2,12 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Countdown } from '@/components/common/Countdown'
 import { useHistoryStore } from '@/stores/useHistoryStore'
-import { generateId, randomInt } from '@/utils/random'
+import { randomInt } from '@/utils/random'
 import { cn } from '@/lib/utils'
 
-type GameState = 'idle' | 'prepare' | 'showing' | 'input' | 'finished'
+type GameState = 'idle' | 'countdown' | 'showing' | 'input' | 'finished'
 
 const GRID_SIZE = 9
 const HIGHLIGHT_DURATION = 500
@@ -21,9 +22,7 @@ export function SequenceMemoryTest() {
   const [userInput, setUserInput] = useState<number[]>([])
   const [highlightedCell, setHighlightedCell] = useState<number | null>(null)
   const [level, setLevel] = useState(1)
-  const [prepareCountdown, setPrepareCountdown] = useState(3)
   const showingRef = useRef(false)
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const generateSequence = useCallback((length: number) => {
     const seq: number[] = []
@@ -54,25 +53,14 @@ export function SequenceMemoryTest() {
   }, [])
 
   const startRound = useCallback((nextLevel: number) => {
-    setGameState('prepare')
-    setPrepareCountdown(3)
-    
-    let countdown = 3
-    countdownIntervalRef.current = setInterval(() => {
-      countdown -= 1
-      setPrepareCountdown(countdown)
-      
-      if (countdown <= 0) {
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current)
-          countdownIntervalRef.current = null
-        }
-        const newSeq = generateSequence(nextLevel)
-        setSequence(newSeq)
-        showSequence(newSeq)
-      }
-    }, 1000)
-  }, [generateSequence, showSequence])
+    setGameState('countdown')
+    const newSeq = generateSequence(nextLevel)
+    setSequence(newSeq)
+  }, [generateSequence])
+
+  const startShowing = useCallback(() => {
+    showSequence(sequence)
+  }, [sequence, showSequence])
 
   const startGame = useCallback(() => {
     setLevel(1)
@@ -93,22 +81,7 @@ export function SequenceMemoryTest() {
 
       if (!isCorrect) {
         setGameState('finished')
-        addResult({
-          id: generateId(),
-          type: 'sequence-memory',
-          timestamp: Date.now(),
-          score: level,
-          grade:
-            level >= 10
-              ? 'elite'
-              : level >= 8
-                ? 'pro'
-                : level >= 6
-                  ? 'advanced'
-                  : level >= 4
-                    ? 'intermediate'
-                    : 'beginner',
-        })
+        // 不记录成绩
         return
       }
 
@@ -125,10 +98,6 @@ export function SequenceMemoryTest() {
   useEffect(() => {
     return () => {
       showingRef.current = false
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current)
-        countdownIntervalRef.current = null
-      }
     }
   }, [])
 
@@ -136,11 +105,22 @@ export function SequenceMemoryTest() {
     return (
       <Card className="max-w-md mx-auto">
         <CardHeader className="text-center">
-          <CardTitle>序列记忆测试完成</CardTitle>
+          <CardTitle>序列记忆测试</CardTitle>
+          <div className="mt-4 inline-block px-6 py-2 rounded-full bg-red-500 text-white font-bold text-lg">
+            测试失败
+          </div>
         </CardHeader>
         <CardContent className="text-center">
-          <div className="text-6xl font-bold text-purple-600 mb-4">{level}</div>
-          <p className="text-gray-500 mb-6">完成了 {level} 轮</p>
+          <div className="space-y-3 mb-6">
+            <div className="flex justify-between items-center py-2 px-3 rounded-lg bg-blue-50 dark:bg-blue-950">
+              <span className="text-gray-600 dark:text-gray-400">失败原因</span>
+              <span className="font-semibold text-blue-600 dark:text-blue-400 text-lg">点击错误</span>
+            </div>
+            <div className="flex justify-between items-center py-2 px-3 rounded-lg">
+              <span className="text-gray-600 dark:text-gray-400">完成等级</span>
+              <span className="font-semibold">{level} 级</span>
+            </div>
+          </div>
           <div className="flex gap-3">
             <Button onClick={startGame} className="flex-1">
               再试一次
@@ -172,12 +152,8 @@ export function SequenceMemoryTest() {
             开始测试
           </Button>
         </div>
-      ) : gameState === 'prepare' ? (
-        <div className="flex items-center justify-center h-96">
-          <div className="text-9xl font-bold text-purple-600 animate-pulse">
-            {prepareCountdown}
-          </div>
-        </div>
+      ) : gameState === 'countdown' ? (
+        <Countdown onComplete={startShowing} />
       ) : gameState === 'showing' || gameState === 'input' ? (
         <>
           <div className="text-center mb-4">

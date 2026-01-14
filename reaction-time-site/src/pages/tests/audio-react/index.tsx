@@ -1,14 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ResultPanel } from '@/components/common/ResultPanel'
+import { Countdown } from '@/components/common/Countdown'
 import { useHistoryStore } from '@/stores/useHistoryStore'
-import { getGradeFromTime } from '@/utils/grading'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { randomInt, generateId } from '@/utils/random'
 import { Volume2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
-type GameState = 'idle' | 'prepare' | 'waiting' | 'played' | 'tooEarly' | 'finished'
+type GameState = 'idle' | 'countdown' | 'waiting' | 'tooEarly' | 'finished'
 
 const TOTAL_ROUNDS = 5
 
@@ -30,15 +31,15 @@ function playBeep() {
 
 export function AudioReactTest() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const addResult = useHistoryStore((s) => s.addResult)
+  const user = useAuthStore((s) => s.user)
 
   const [gameState, setGameState] = useState<GameState>('idle')
   const [round, setRound] = useState(0)
   const [reactionTimes, setReactionTimes] = useState<number[]>([])
-  const [prepareCountdown, setPrepareCountdown] = useState(3)
   const soundPlayedRef = useRef<number>(0)
   const timeoutRef = useRef<number | null>(null)
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const playSound = useCallback(() => {
     playBeep()
@@ -54,23 +55,8 @@ export function AudioReactTest() {
   }, [playSound])
 
   const startRound = useCallback(() => {
-    setGameState('prepare')
-    setPrepareCountdown(3)
-    
-    let countdown = 3
-    countdownIntervalRef.current = setInterval(() => {
-      countdown -= 1
-      setPrepareCountdown(countdown)
-      
-      if (countdown <= 0) {
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current)
-          countdownIntervalRef.current = null
-        }
-        startWaiting()
-      }
-    }, 1000)
-  }, [startWaiting])
+    setGameState('countdown')
+  }, [])
 
   const startGame = useCallback(() => {
     setRound(1)
@@ -110,34 +96,27 @@ export function AudioReactTest() {
 
   const handleTooEarlyRetry = useCallback(() => {
     soundPlayedRef.current = 0
-    startRound()
-  }, [startRound])
+    setGameState('finished') // 改为失败结束
+  }, [])
 
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current)
-        countdownIntervalRef.current = null
-      }
     }
   }, [])
 
   useEffect(() => {
-    if (gameState === 'finished' && reactionTimes.length > 0) {
+    if (gameState === 'finished' && reactionTimes.length === TOTAL_ROUNDS) {
       const avg =
         reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length
-      const grade = getGradeFromTime(avg)
       addResult({
         id: generateId(),
         type: 'audio-react',
         timestamp: Date.now(),
         averageTime: avg,
-        totalClicks: reactionTimes.length,
         fastestTime: Math.min(...reactionTimes),
-        slowestTime: Math.max(...reactionTimes),
-        grade,
-      })
+        grade: 'intermediate',
+      }, user?.id)
     }
   }, [gameState, reactionTimes, addResult])
 
@@ -146,22 +125,35 @@ export function AudioReactTest() {
       ? reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length
       : 0
 
+  const success = reactionTimes.length === TOTAL_ROUNDS
+
   if (gameState === 'finished') {
+    if (!success) {
+      return (
+        <ResultPanel
+          title="声音反应测试"
+          success={false}
+          stats={[
+            { label: '失败原因', value: '点击过早', highlight: true },
+            { label: '完成轮数', value: `${reactionTimes.length} / ${TOTAL_ROUNDS}` },
+          ]}
+          onRetry={startGame}
+          onHome={() => navigate('/')}
+        />
+      )
+    }
+
     return (
       <ResultPanel
-        title="声音反应测试完成"
-        grade={getGradeFromTime(averageTime)}
+        title={t('result.title')}
+        testType="audio-react"
+        scoreForDistribution={{
+          value: averageTime,
+          key: 'averageTime',
+        }}
         stats={[
-          { label: '平均反应时间', value: averageTime, highlight: true },
-          { label: '测试次数', value: `${reactionTimes.length} 次` },
-          {
-            label: '最快反应',
-            value: reactionTimes.length > 0 ? Math.min(...reactionTimes) : 0,
-          },
-          {
-            label: '最慢反应',
-            value: reactionTimes.length > 0 ? Math.max(...reactionTimes) : 0,
-          },
+          { label: t('result.avgReactionTime'), value: averageTime, highlight: true },
+          { label: t('result.fastestTime'), value: reactionTimes.length > 0 ? Math.min(...reactionTimes) : 0 },
         ]}
         onRetry={startGame}
         onHome={() => navigate('/')}
@@ -185,19 +177,15 @@ export function AudioReactTest() {
             开始测试
           </Button>
         </div>
-      ) : gameState === 'prepare' ? (
-        <div className="flex items-center justify-center h-96">
-          <div className="text-9xl font-bold text-orange-600 animate-pulse">
-            {prepareCountdown}
-          </div>
-        </div>
+      ) : gameState === 'countdown' ? (
+        <Countdown onComplete={startWaiting} />
       ) : gameState === 'tooEarly' ? (
         <div
-          className="h-[400px] rounded-xl flex flex-col items-center justify-center bg-yellow-500 cursor-pointer"
+          className="h-[400px] rounded-xl flex flex-col items-center justify-center bg-red-500 cursor-pointer"
           onClick={handleTooEarlyRetry}
         >
-          <p className="text-white text-3xl font-bold mb-4">太早了！</p>
-          <p className="text-white text-lg">点击重试本轮</p>
+          <p className="text-white text-3xl font-bold mb-4">点击过早！</p>
+          <p className="text-white text-lg">测试失败，点击返回</p>
         </div>
       ) : gameState === 'waiting' ? (
         <>

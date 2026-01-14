@@ -1,30 +1,60 @@
+import { useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
-import { Home, History } from 'lucide-react'
+import { History, User, LogOut } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { LanguageSwitcher } from './LanguageSwitcher'
+import { AuthModal } from '@/components/auth/AuthModal'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 export function Layout() {
+  const { t } = useTranslation()
+  const { user, signOut } = useAuthStore()
+  const [showAuthModal, setShowAuthModal] = useState(false)
+
+  const handleLogout = async () => {
+    try {
+      await signOut()
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 font-bold text-xl">
             <span className="text-2xl">⚡</span>
-            <span>反应测试</span>
+            <span>{t('app.title')}</span>
           </Link>
-          <nav className="flex items-center gap-4">
-            <Link
-              to="/"
-              className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-            >
-              <Home size={18} />
-              <span className="hidden sm:inline">首页</span>
-            </Link>
+          <nav className="flex items-center gap-2">
             <Link
               to="/history"
-              className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              className="flex items-center gap-1.5 px-3 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
               <History size={18} />
-              <span className="hidden sm:inline">历史</span>
+              <span className="hidden sm:inline">{t('nav.history')}</span>
             </Link>
+
+            {user ? (
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 px-3 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <LogOut size={18} />
+                <span className="hidden sm:inline">{t('button.logout')}</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <User size={18} />
+                <span className="hidden sm:inline">{t('button.login')}</span>
+              </button>
+            )}
+
+            <LanguageSwitcher />
           </nav>
         </div>
       </header>
@@ -32,8 +62,13 @@ export function Layout() {
         <Outlet />
       </main>
       <footer className="border-t py-6 text-center text-sm text-gray-500">
-        <p>游戏反应能力测试 - 提升你的反应速度</p>
+        <p>{t('app.footer')}</p>
       </footer>
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import type { TestInfo } from '@/types/test'
 
@@ -7,6 +8,8 @@ interface TestCardProps {
 }
 
 export function TestCard({ test }: TestCardProps) {
+  const { t } = useTranslation()
+
   return (
     <Link
       to={`/test/${test.id}`}
@@ -24,9 +27,9 @@ export function TestCard({ test }: TestCardProps) {
       >
         {test.icon}
       </div>
-      <h3 className="text-lg font-semibold mb-2">{test.name}</h3>
+      <h3 className="text-lg font-semibold mb-2">{t(`test.${test.i18nKey}.name`)}</h3>
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        {test.description}
+        {t(`test.${test.i18nKey}.description`)}
       </p>
     </Link>
   )

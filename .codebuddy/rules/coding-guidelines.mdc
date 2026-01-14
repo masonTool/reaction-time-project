@@ -1,0 +1,609 @@
+---
+description: 前端编码规范 - TypeScript、React 组件、样式和状态管理最佳实践
+alwaysApply: true
+enabled: true
+updatedAt: 2026-01-09T00:00:00.000Z
+provider: 
+---
+
+# 前端编码规范
+
+## TypeScript 规范
+
+### 类型定义
+
+```typescript
+// ✅ 正确：使用 interface 定义对象类型
+interface User {
+  id: string
+  name: string
+  email: string
+  createdAt: Date
+}
+
+// ✅ 正确：使用 type 定义联合类型
+type Status = 'idle' | 'loading' | 'success' | 'error'
+
+// ✅ 正确：使用 type 定义工具类型
+type Nullable<T> = T | null
+
+// ❌ 错误：使用 any
+const data: any = fetchData()
+
+// ✅ 正确：使用 unknown 并进行类型守卫
+const data: unknown = fetchData()
+if (isUser(data)) {
+  console.log(data.name)
+}
+```
+
+### 函数类型
+
+```typescript
+// ✅ 正确：明确参数和返回类型
+function formatDate(date: Date, format: string): string {
+  // ...
+}
+
+// ✅ 正确：箭头函数类型
+const add = (a: number, b: number): number => a + b
+
+// ✅ 正确：异步函数返回类型
+async function fetchUser(id: string): Promise<User> {
+  // ...
+}
+
+// ❌ 错误：省略返回类型（复杂函数）
+function processData(input) {
+  // 返回类型不明确
+}
+```
+
+### 类型导入
+
+```typescript
+// ✅ 正确：使用 type 关键字导入类型
+import type { User, Product } from '@/types'
+import { fetchUser } from '@/services/user'
+
+// ✅ 正确：混合导入
+import { cn, type ClassValue } from '@/lib/utils'
+```
+
+---
+
+## React 组件规范
+
+### 函数组件定义
+
+```typescript
+// ✅ 正确：使用函数声明 + 明确 Props 类型
+interface UserCardProps {
+  user: User
+  onSelect?: (user: User) => void
+  className?: string
+}
+
+function UserCard({ user, onSelect, className }: UserCardProps) {
+  return (
+    <div className={cn('rounded-lg p-4', className)}>
+      <h3>{user.name}</h3>
+      <button onClick={() => onSelect?.(user)}>Select</button>
+    </div>
+  )
+}
+
+// ❌ 错误：使用 React.FC（类型推断问题）
+const UserCard: React.FC<UserCardProps> = ({ user }) => {
+  // ...
+}
+```
+
+### 组件分类
+
+| 类型 | 职责 | 位置 | 示例 |
+|------|------|------|------|
+| UI 组件 | 纯展示，无业务逻辑 | `components/ui/` | Button, Input, Dialog |
+| 通用组件 | 可复用的业务组件 | `components/common/` | Header, Footer, Sidebar |
+| 页面组件 | 页面级容器 | `pages/` | HomePage, Dashboard |
+| 功能组件 | 页面私有组件 | `pages/xxx/components/` | HeroSection, ProductList |
+
+### Props 规范
+
+```typescript
+interface ComponentProps {
+  // ========== 必需属性 ==========
+  /** 组件唯一标识 */
+  id: string
+  /** 显示的标题 */
+  title: string
+  
+  // ========== 可选属性 ==========
+  /** 描述文本 */
+  description?: string
+  /** 是否禁用 */
+  disabled?: boolean
+  /** 加载状态 */
+  loading?: boolean
+  
+  // ========== 样式属性 ==========
+  /** 自定义类名 */
+  className?: string
+  
+  // ========== 事件回调 ==========
+  /** 点击事件 */
+  onClick?: () => void
+  /** 值变化事件 */
+  onChange?: (value: string) => void
+  
+  // ========== 子元素 ==========
+  /** 子元素 */
+  children?: React.ReactNode
+}
+```
+
+| 类型 | 前缀/后缀 | 示例 |
+|------|-----------|------|
+| 布尔值 | `is`, `has`, `show`, `enable` | `isActive`, `hasError`, `showIcon` |
+| 事件回调 | `on` | `onClick`, `onChange`, `onSubmit` |
+| 渲染函数 | `render` | `renderHeader`, `renderItem` |
+| 尺寸 | `size` | `size="sm" \| "md" \| "lg"` |
+| 变体 | `variant` | `variant="primary" \| "secondary"` |
+
+### 默认值处理
+
+```typescript
+// ✅ 正确：在解构时设置默认值
+function Button({
+  size = 'md',
+  variant = 'primary',
+  disabled = false,
+  children,
+}: ButtonProps) {
+  return (
+    <button
+      disabled={disabled}
+      className={cn(
+        sizeStyles[size],
+        variantStyles[variant],
+        disabled && 'opacity-50 cursor-not-allowed'
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+```
+
+### Hooks 使用顺序
+
+```typescript
+function UserProfile({ userId }: { userId: string }) {
+  // 1. useState 放最前
+  const [isEditing, setIsEditing] = useState(false)
+  
+  // 2. 自定义 Hooks
+  const { data: user, isLoading } = useSWR(`/api/users/${userId}`, fetcher)
+  const { theme } = useUIStore()
+  
+  // 3. useRef
+  const inputRef = useRef<HTMLInputElement>(null)
+  
+  // 4. useMemo / useCallback
+  const fullName = useMemo(
+    () => `${user?.firstName} ${user?.lastName}`,
+    [user?.firstName, user?.lastName]
+  )
+  
+  // 5. useEffect 放最后
+  useEffect(() => {
+    document.title = `${user?.name}'s Profile`
+  }, [user?.name])
+  
+  // 6. 条件渲染
+  if (isLoading) return <Skeleton />
+  if (!user) return <NotFound />
+  
+  return <div>{/* ... */}</div>
+}
+```
+
+---
+
+## 事件处理规范
+
+```typescript
+// ✅ 正确：处理函数以 handle 开头
+function Form() {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    // ...
+  }
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ...
+  }
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <input onChange={handleInputChange} />
+    </form>
+  )
+}
+
+// ❌ 错误：命名不规范
+const submit = () => {}
+const change = () => {}
+```
+
+### 常用事件类型
+
+```typescript
+type MouseHandler = (e: React.MouseEvent<HTMLButtonElement>) => void
+type ChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => void
+type SubmitHandler = (e: React.FormEvent<HTMLFormElement>) => void
+type KeyHandler = (e: React.KeyboardEvent<HTMLInputElement>) => void
+```
+
+---
+
+## 条件渲染规范
+
+```typescript
+// ✅ 正确：早返回模式
+function UserCard({ user }: { user: User | null }) {
+  if (!user) return null
+  return <div>{user.name}</div>
+}
+
+// ✅ 正确：三元表达式（简单条件）
+function Status({ isActive }: { isActive: boolean }) {
+  return <span>{isActive ? 'Active' : 'Inactive'}</span>
+}
+
+// ✅ 正确：&& 短路（仅显示/隐藏）
+function Notification({ message }: { message?: string }) {
+  return <div>{message && <Alert>{message}</Alert>}</div>
+}
+
+// ❌ 错误：嵌套三元表达式
+function Status({ status }: { status: string }) {
+  return (
+    <span>
+      {status === 'active' ? 'Active' : status === 'pending' ? 'Pending' : 'Inactive'}
+    </span>
+  )
+}
+
+// ✅ 正确：复杂条件使用映射
+const STATUS_MAP = {
+  active: 'Active',
+  pending: 'Pending',
+  inactive: 'Inactive',
+} as const
+
+function Status({ status }: { status: keyof typeof STATUS_MAP }) {
+  return <span>{STATUS_MAP[status]}</span>
+}
+```
+
+---
+
+## 样式规范（Tailwind CSS）
+
+### 类名组织
+
+```typescript
+// ✅ 正确：按类别组织类名
+<div
+  className={cn(
+    // 布局
+    'flex items-center justify-between',
+    // 尺寸
+    'w-full h-12 px-4',
+    // 外观
+    'bg-white rounded-lg shadow-sm',
+    // 边框
+    'border border-gray-200',
+    // 交互
+    'hover:bg-gray-50 cursor-pointer',
+    // 过渡
+    'transition-colors duration-200',
+    // 条件类名
+    isActive && 'ring-2 ring-blue-500',
+    className
+  )}
+>
+```
+
+### cn 工具函数
+
+```typescript
+// lib/utils.ts
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+// 使用
+import { cn } from '@/lib/utils'
+
+<Button className={cn('w-full', isLoading && 'opacity-50')} />
+```
+
+---
+
+## 状态管理模式
+
+### 本地状态 vs 全局状态
+
+```typescript
+// ✅ 本地状态：组件内部 UI 状态
+function Dropdown() {
+  const [isOpen, setIsOpen] = useState(false)
+  // ...
+}
+
+// ✅ 全局状态：跨组件共享（Zustand）
+// stores/useUIStore.ts
+export const useUIStore = create<UIStore>((set) => ({
+  sidebarOpen: true,
+  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+}))
+```
+
+### 服务端状态（SWR）
+
+```typescript
+// ✅ 使用 SWR 获取和缓存服务端数据
+function UserList() {
+  const { data: users, error, isLoading, mutate } = useSWR<User[]>(
+    '/api/users',
+    fetcher
+  )
+  
+  if (isLoading) return <UserListSkeleton />
+  if (error) return <ErrorMessage error={error} />
+  
+  return (
+    <ul>
+      {users?.map((user) => (
+        <UserItem key={user.id} user={user} />
+      ))}
+    </ul>
+  )
+}
+```
+
+### 表单状态
+
+```typescript
+// ✅ 使用受控组件 + 本地状态
+function LoginForm({ onSubmit }: { onSubmit: (data: LoginData) => void }) {
+  const [formData, setFormData] = useState({ email: '', password: '' })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    setErrors((prev) => ({ ...prev, [name]: '' }))
+  }
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const validationErrors = validate(formData)
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors)
+      return
+    }
+    onSubmit(formData)
+  }
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <Input name="email" value={formData.email} onChange={handleChange} error={errors.email} />
+      <Input name="password" type="password" value={formData.password} onChange={handleChange} error={errors.password} />
+      <Button type="submit">Login</Button>
+    </form>
+  )
+}
+```
+
+---
+
+## 组合模式
+
+### Compound Components
+
+```typescript
+// ✅ 使用组合模式构建复杂组件
+function Card({ children, className }: CardProps) {
+  return (
+    <div className={cn('rounded-lg border bg-card p-6', className)}>
+      {children}
+    </div>
+  )
+}
+
+function CardHeader({ children, className }: CardProps) {
+  return <div className={cn('mb-4', className)}>{children}</div>
+}
+
+function CardTitle({ children, className }: CardProps) {
+  return <h3 className={cn('text-lg font-semibold', className)}>{children}</h3>
+}
+
+Card.Header = CardHeader
+Card.Title = CardTitle
+
+// 使用
+<Card>
+  <Card.Header>
+    <Card.Title>User Profile</Card.Title>
+  </Card.Header>
+</Card>
+```
+
+### Render Props
+
+```typescript
+// ✅ 使用 Render Props 实现灵活渲染
+interface ListProps<T> {
+  items: T[]
+  renderItem: (item: T, index: number) => React.ReactNode
+  renderEmpty?: () => React.ReactNode
+}
+
+function List<T>({ items, renderItem, renderEmpty = () => <p>No items</p> }: ListProps<T>) {
+  if (items.length === 0) return renderEmpty()
+  return <ul>{items.map((item, index) => <li key={index}>{renderItem(item, index)}</li>)}</ul>
+}
+```
+
+---
+
+## 性能优化
+
+### React.memo
+
+```typescript
+// ✅ 对纯展示组件使用 memo
+const UserCard = memo(function UserCard({ user }: { user: User }) {
+  return (
+    <div className="p-4 border rounded">
+      <img src={user.avatar} alt={user.name} />
+      <h3>{user.name}</h3>
+    </div>
+  )
+})
+```
+
+### useCallback / useMemo
+
+```typescript
+function ParentComponent({ userId }: { userId: string }) {
+  // ✅ 缓存回调函数
+  const handleSelect = useCallback((id: string) => {
+    console.log('Selected:', id)
+  }, [])
+  
+  // ✅ 缓存计算结果
+  const sortedItems = useMemo(
+    () => items.sort((a, b) => a.name.localeCompare(b.name)),
+    [items]
+  )
+  
+  return <ChildComponent items={sortedItems} onSelect={handleSelect} />
+}
+```
+
+---
+
+## 可访问性 (A11y)
+
+```typescript
+// ✅ 正确：包含必要的可访问性属性
+function IconButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button type="button" aria-label={label} onClick={onClick} className="p-2 rounded hover:bg-gray-100">
+      {icon}
+    </button>
+  )
+}
+
+// ✅ 正确：表单可访问性
+function FormField({ id, label, error, ...props }: { id: string; label: string; error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium">{label}</label>
+      <input
+        id={id}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${id}-error` : undefined}
+        className={cn('mt-1 block w-full rounded-md border', error && 'border-red-500')}
+        {...props}
+      />
+      {error && <p id={`${id}-error`} className="mt-1 text-sm text-red-500" role="alert">{error}</p>}
+    </div>
+  )
+}
+```
+
+---
+
+## 注释规范
+
+```typescript
+// ✅ 正确：JSDoc 注释用于公共 API
+/**
+ * 格式化日期为指定格式
+ * @param date - 要格式化的日期
+ * @param format - 目标格式，默认 'YYYY-MM-DD'
+ * @returns 格式化后的日期字符串
+ */
+function formatDate(date: Date, format = 'YYYY-MM-DD'): string {
+  // ...
+}
+
+// ✅ 正确：TODO 注释格式
+// TODO: 实现分页功能
+// FIXME: 修复边界条件
+// NOTE: 这里使用了特殊处理
+
+// ❌ 错误：无意义的注释
+// 设置名字
+setName(name)
+```
+
+---
+
+## ESLint 配置
+
+```javascript
+// eslint.config.js
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import tseslint from 'typescript-eslint'
+
+export default tseslint.config(
+  { ignores: ['dist'] },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'error',
+    },
+  },
+)
+```
+
+---
+
+## Prettier 配置
+
+```json
+// .prettierrc
+{
+  "semi": false,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "printWidth": 100,
+  "plugins": ["prettier-plugin-tailwindcss"]
+}
+```

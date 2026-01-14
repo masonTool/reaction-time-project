@@ -1,0 +1,652 @@
+---
+description: 前端测试规范 - Vitest + React Testing Library 测试编写标准
+alwaysApply: true
+enabled: true
+updatedAt: 2026-01-09T00:00:00.000Z
+provider: 
+---
+
+# 前端测试规范
+
+## 测试技术栈
+
+| 工具 | 用途 | 版本要求 |
+|------|------|----------|
+| Vitest | 测试框架 | ^2.x |
+| @testing-library/react | 组件测试 | ^16.x |
+| @testing-library/user-event | 用户交互模拟 | ^14.x |
+| @testing-library/jest-dom | DOM 断言扩展 | ^6.x |
+| msw | API Mock（可选） | ^2.x |
+
+---
+
+## 测试文件组织
+
+### 目录结构
+
+```
+src/
+├── components/
+│   └── Button/
+│       ├── index.tsx
+│       ├── Button.tsx
+│       └── Button.test.tsx      # 组件测试（同目录）
+├── hooks/
+│   ├── useAuth.ts
+│   └── useAuth.test.ts          # Hook 测试（同目录）
+├── utils/
+│   ├── format.ts
+│   └── format.test.ts           # 工具函数测试（同目录）
+└── __tests__/                   # 集成测试目录
+    └── auth-flow.test.tsx
+```
+
+### 文件命名规则
+
+| 类型 | 命名格式 | 示例 |
+|------|----------|------|
+| 单元测试 | `<filename>.test.ts(x)` | `Button.test.tsx` |
+| 集成测试 | `<feature>.test.tsx` | `auth-flow.test.tsx` |
+| 测试工具 | `test-utils.ts` | `test-utils.ts` |
+| Mock 文件 | `__mocks__/<module>.ts` | `__mocks__/api.ts` |
+
+---
+
+## 测试编写规范
+
+### 测试结构模板
+
+```typescript
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { Button } from './Button'
+
+describe('Button', () => {
+  // 1. 渲染测试
+  describe('rendering', () => {
+    it('should render children correctly', () => {
+      render(<Button>Click me</Button>)
+      expect(screen.getByRole('button', { name: 'Click me' })).toBeInTheDocument()
+    })
+
+    it('should apply custom className', () => {
+      render(<Button className="custom">Test</Button>)
+      expect(screen.getByRole('button')).toHaveClass('custom')
+    })
+  })
+
+  // 2. 交互测试
+  describe('interactions', () => {
+    it('should call onClick when clicked', async () => {
+      const user = userEvent.setup()
+      const handleClick = vi.fn()
+      
+      render(<Button onClick={handleClick}>Click</Button>)
+      await user.click(screen.getByRole('button'))
+      
+      expect(handleClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not call onClick when disabled', async () => {
+      const user = userEvent.setup()
+      const handleClick = vi.fn()
+      
+      render(<Button disabled onClick={handleClick}>Click</Button>)
+      await user.click(screen.getByRole('button'))
+      
+      expect(handleClick).not.toHaveBeenCalled()
+    })
+  })
+
+  // 3. 状态测试
+  describe('states', () => {
+    it('should show loading spinner when loading', () => {
+      render(<Button loading>Submit</Button>)
+      expect(screen.getByRole('button')).toBeDisabled()
+      expect(screen.getByTestId('spinner')).toBeInTheDocument()
+    })
+  })
+})
+```
+
+### 测试命名规范
+
+```typescript
+// ✅ 正确：使用 should 开头，描述预期行为
+it('should render error message when validation fails', () => {})
+it('should call onSubmit with form data when submitted', () => {})
+it('should disable button while loading', () => {})
+
+// ❌ 错误：描述不清晰
+it('test button', () => {})
+it('works correctly', () => {})
+it('handles click', () => {})
+```
+
+### describe 分组规范
+
+```typescript
+describe('ComponentName', () => {
+  // 按功能分组
+  describe('rendering', () => {})      // 渲染相关
+  describe('interactions', () => {})   // 用户交互
+  describe('states', () => {})         // 状态变化
+  describe('edge cases', () => {})     // 边界情况
+  describe('accessibility', () => {})  // 可访问性
+})
+```
+
+---
+
+## 组件测试规范
+
+### 查询优先级
+
+按以下优先级选择查询方法（遵循 Testing Library 最佳实践）：
+
+```typescript
+// 1. ✅ 优先：可访问性查询（用户可感知）
+screen.getByRole('button', { name: 'Submit' })
+screen.getByLabelText('Email')
+screen.getByPlaceholderText('Enter email')
+screen.getByText('Welcome')
+screen.getByDisplayValue('current value')
+
+// 2. ⚠️ 次选：语义化查询
+screen.getByAltText('User avatar')
+screen.getByTitle('Close')
+
+// 3. ❌ 避免：测试 ID（仅在无其他选择时使用）
+screen.getByTestId('submit-button')
+```
+
+### 异步测试
+
+```typescript
+// ✅ 正确：使用 findBy 等待异步内容
+it('should show user data after loading', async () => {
+  render(<UserProfile userId="1" />)
+  
+  // 等待加载完成
+  expect(await screen.findByText('John Doe')).toBeInTheDocument()
+})
+
+// ✅ 正确：使用 waitFor 等待状态变化
+it('should show success message after submit', async () => {
+  const user = userEvent.setup()
+  render(<ContactForm />)
+  
+  await user.type(screen.getByLabelText('Email'), 'test@example.com')
+  await user.click(screen.getByRole('button', { name: 'Submit' }))
+  
+  await waitFor(() => {
+    expect(screen.getByText('Message sent!')).toBeInTheDocument()
+  })
+})
+
+// ✅ 正确：使用 waitForElementToBeRemoved 等待元素消失
+it('should hide loading spinner after data loads', async () => {
+  render(<DataList />)
+  
+  await waitForElementToBeRemoved(() => screen.queryByTestId('spinner'))
+  expect(screen.getByRole('list')).toBeInTheDocument()
+})
+```
+
+### 用户交互测试
+
+```typescript
+import userEvent from '@testing-library/user-event'
+
+// ✅ 正确：使用 userEvent.setup() 创建用户实例
+it('should handle form submission', async () => {
+  const user = userEvent.setup()
+  const handleSubmit = vi.fn()
+  
+  render(<LoginForm onSubmit={handleSubmit} />)
+  
+  // 输入
+  await user.type(screen.getByLabelText('Email'), 'test@example.com')
+  await user.type(screen.getByLabelText('Password'), 'password123')
+  
+  // 点击
+  await user.click(screen.getByRole('button', { name: 'Login' }))
+  
+  expect(handleSubmit).toHaveBeenCalledWith({
+    email: 'test@example.com',
+    password: 'password123',
+  })
+})
+
+// 常用交互方法
+await user.click(element)           // 点击
+await user.dblClick(element)        // 双击
+await user.type(element, 'text')    // 输入文本
+await user.clear(element)           // 清空输入
+await user.selectOptions(select, 'value')  // 选择下拉选项
+await user.hover(element)           // 悬停
+await user.keyboard('{Enter}')      // 键盘事件
+await user.tab()                    // Tab 切换焦点
+```
+
+---
+
+## Hook 测试规范
+
+### 使用 renderHook
+
+```typescript
+import { renderHook, act } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { useCounter } from './useCounter'
+
+describe('useCounter', () => {
+  it('should return initial count', () => {
+    const { result } = renderHook(() => useCounter(10))
+    
+    expect(result.current.count).toBe(10)
+  })
+
+  it('should increment count', () => {
+    const { result } = renderHook(() => useCounter(0))
+    
+    act(() => {
+      result.current.increment()
+    })
+    
+    expect(result.current.count).toBe(1)
+  })
+
+  it('should reset count to initial value', () => {
+    const { result } = renderHook(() => useCounter(5))
+    
+    act(() => {
+      result.current.increment()
+      result.current.increment()
+      result.current.reset()
+    })
+    
+    expect(result.current.count).toBe(5)
+  })
+})
+```
+
+### 测试带依赖的 Hook
+
+```typescript
+// 测试依赖 props 变化的 Hook
+it('should update when props change', () => {
+  const { result, rerender } = renderHook(
+    ({ userId }) => useUser(userId),
+    { initialProps: { userId: '1' } }
+  )
+  
+  expect(result.current.userId).toBe('1')
+  
+  rerender({ userId: '2' })
+  
+  expect(result.current.userId).toBe('2')
+})
+```
+
+### 测试异步 Hook
+
+```typescript
+import { renderHook, waitFor } from '@testing-library/react'
+
+describe('useFetchUser', () => {
+  it('should fetch and return user data', async () => {
+    const { result } = renderHook(() => useFetchUser('1'))
+    
+    // 初始状态
+    expect(result.current.isLoading).toBe(true)
+    expect(result.current.data).toBeNull()
+    
+    // 等待加载完成
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+    
+    expect(result.current.data).toEqual({ id: '1', name: 'John' })
+  })
+})
+```
+
+### 测试需要 Provider 的 Hook
+
+```typescript
+import { renderHook, waitFor } from '@testing-library/react'
+import { SWRConfig } from 'swr'
+
+// 创建 wrapper（SWR 不需要 Provider，但可以用 SWRConfig 配置）
+function createWrapper() {
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return (
+      <SWRConfig value={{ dedupingInterval: 0, provider: () => new Map() }}>
+        {children}
+      </SWRConfig>
+    )
+  }
+}
+
+it('should work with SWR', async () => {
+  const { result } = renderHook(() => useUsers(), {
+    wrapper: createWrapper(),
+  })
+  
+  // 初始状态
+  expect(result.current.isLoading).toBe(true)
+  
+  await waitFor(() => {
+    expect(result.current.data).toBeDefined()
+  })
+})
+```
+
+---
+
+## Mock 策略规范
+
+### 函数 Mock
+
+```typescript
+import { vi, describe, it, expect, beforeEach } from 'vitest'
+
+describe('with mocked function', () => {
+  const mockFn = vi.fn()
+  
+  beforeEach(() => {
+    mockFn.mockClear()  // 清除调用记录
+    // 或 mockFn.mockReset()  // 清除调用记录 + 实现
+  })
+
+  it('should call mock function', () => {
+    mockFn('arg1', 'arg2')
+    
+    expect(mockFn).toHaveBeenCalled()
+    expect(mockFn).toHaveBeenCalledWith('arg1', 'arg2')
+    expect(mockFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('should return mocked value', () => {
+    mockFn.mockReturnValue('mocked')
+    expect(mockFn()).toBe('mocked')
+    
+    mockFn.mockReturnValueOnce('first').mockReturnValueOnce('second')
+    expect(mockFn()).toBe('first')
+    expect(mockFn()).toBe('second')
+  })
+
+  it('should mock async function', async () => {
+    mockFn.mockResolvedValue({ data: 'async result' })
+    
+    const result = await mockFn()
+    expect(result).toEqual({ data: 'async result' })
+  })
+})
+```
+
+### 模块 Mock
+
+```typescript
+// ✅ 正确：Mock 整个模块
+vi.mock('@/services/api', () => ({
+  fetchUser: vi.fn().mockResolvedValue({ id: '1', name: 'John' }),
+  updateUser: vi.fn().mockResolvedValue({ success: true }),
+}))
+
+// ✅ 正确：部分 Mock
+vi.mock('@/utils/date', async () => {
+  const actual = await vi.importActual('@/utils/date')
+  return {
+    ...actual,
+    formatDate: vi.fn().mockReturnValue('2024-01-01'),
+  }
+})
+
+// ✅ 正确：动态 Mock 返回值
+import { fetchUser } from '@/services/api'
+
+vi.mock('@/services/api')
+
+describe('UserProfile', () => {
+  it('should show user name', async () => {
+    vi.mocked(fetchUser).mockResolvedValue({ id: '1', name: 'Alice' })
+    
+    render(<UserProfile userId="1" />)
+    expect(await screen.findByText('Alice')).toBeInTheDocument()
+  })
+
+  it('should show error on failure', async () => {
+    vi.mocked(fetchUser).mockRejectedValue(new Error('Network error'))
+    
+    render(<UserProfile userId="1" />)
+    expect(await screen.findByText('Failed to load user')).toBeInTheDocument()
+  })
+})
+```
+
+### 定时器 Mock
+
+```typescript
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
+
+describe('with mocked timers', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('should debounce input', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const handleChange = vi.fn()
+    
+    render(<SearchInput onChange={handleChange} debounceMs={300} />)
+    
+    await user.type(screen.getByRole('textbox'), 'test')
+    
+    // 还没到 debounce 时间
+    expect(handleChange).not.toHaveBeenCalled()
+    
+    // 快进 300ms
+    vi.advanceTimersByTime(300)
+    
+    expect(handleChange).toHaveBeenCalledWith('test')
+  })
+})
+```
+
+### API Mock（使用 MSW）
+
+```typescript
+// src/mocks/handlers.ts
+import { http, HttpResponse } from 'msw'
+
+export const handlers = [
+  http.get('/api/users/:id', ({ params }) => {
+    return HttpResponse.json({
+      id: params.id,
+      name: 'John Doe',
+      email: 'john@example.com',
+    })
+  }),
+
+  http.post('/api/users', async ({ request }) => {
+    const body = await request.json()
+    return HttpResponse.json({ id: '123', ...body }, { status: 201 })
+  }),
+
+  http.get('/api/users', () => {
+    return HttpResponse.json([
+      { id: '1', name: 'User 1' },
+      { id: '2', name: 'User 2' },
+    ])
+  }),
+]
+
+// src/mocks/server.ts
+import { setupServer } from 'msw/node'
+import { handlers } from './handlers'
+
+export const server = setupServer(...handlers)
+
+// vitest.setup.ts
+import { beforeAll, afterAll, afterEach } from 'vitest'
+import { server } from './src/mocks/server'
+
+beforeAll(() => server.listen())
+afterEach(() => server.resetHandlers())
+afterAll(() => server.close())
+```
+
+---
+
+## 测试配置
+
+### vitest.config.ts
+
+```typescript
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./vitest.setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'src/mocks/',
+        '**/*.d.ts',
+        '**/*.test.{ts,tsx}',
+        '**/index.ts',
+      ],
+    },
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+})
+```
+
+### vitest.setup.ts
+
+```typescript
+import '@testing-library/jest-dom/vitest'
+import { cleanup } from '@testing-library/react'
+import { afterEach } from 'vitest'
+
+// 每个测试后自动清理
+afterEach(() => {
+  cleanup()
+})
+
+// 可选：MSW 配置
+// import { server } from './src/mocks/server'
+// beforeAll(() => server.listen())
+// afterEach(() => server.resetHandlers())
+// afterAll(() => server.close())
+```
+
+### package.json 脚本
+
+```json
+{
+  "scripts": {
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch"
+  }
+}
+```
+
+---
+
+## 测试覆盖率要求
+
+| 指标 | 最低要求 | 建议目标 |
+|------|----------|----------|
+| Statements | 70% | 80% |
+| Branches | 70% | 80% |
+| Functions | 70% | 80% |
+| Lines | 70% | 80% |
+
+### 重点测试范围
+
+- ✅ **必须测试**：业务逻辑组件、自定义 Hooks、工具函数
+- ⚠️ **建议测试**：通用 UI 组件、表单验证
+- ❌ **可不测试**：纯样式组件、第三方库封装
+
+---
+
+## 测试最佳实践
+
+### DO（推荐）
+
+```typescript
+// ✅ 测试用户可见的行为
+expect(screen.getByText('Welcome')).toBeInTheDocument()
+
+// ✅ 使用语义化查询
+screen.getByRole('button', { name: 'Submit' })
+
+// ✅ 测试异步行为时使用 findBy
+expect(await screen.findByText('Loaded')).toBeInTheDocument()
+
+// ✅ 每个测试独立，不依赖其他测试
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
+// ✅ 测试边界情况
+it('should handle empty array', () => {})
+it('should handle null value', () => {})
+```
+
+### DON'T（避免）
+
+```typescript
+// ❌ 测试实现细节
+expect(component.state.isOpen).toBe(true)
+
+// ❌ 直接测试 props
+expect(wrapper.props().disabled).toBe(true)
+
+// ❌ 使用 container.querySelector
+const button = container.querySelector('.btn-primary')
+
+// ❌ 测试之间共享状态
+let sharedData = {}
+
+// ❌ 过度使用快照测试
+expect(component).toMatchSnapshot()
+```
+
+---
+
+## 检查清单
+
+生成测试代码后，AI 应自检：
+
+- [ ] 测试文件命名符合 `*.test.ts(x)` 规范
+- [ ] 使用 describe 合理分组
+- [ ] 测试名称以 should 开头，描述清晰
+- [ ] 优先使用 getByRole 等语义化查询
+- [ ] 异步测试使用 findBy 或 waitFor
+- [ ] 用户交互使用 userEvent.setup()
+- [ ] Mock 在 beforeEach 中清理
+- [ ] 无测试间状态共享

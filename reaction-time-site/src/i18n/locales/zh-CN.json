@@ -1,0 +1,88 @@
+{
+  "app": {
+    "title": "反应能力测试",
+    "subtitle": "通过多种专业测试工具,了解并提升你的反应速度、准确性和认知能力",
+    "footer": "反应能力测试 - 提升你的反应速度"
+  },
+  "nav": {
+    "home": "首页",
+    "history": "历史"
+  },
+  "test": {
+    "clickTracker": {
+      "name": "点击追踪测试",
+      "description": "在30秒内尽可能多地点击移动的目标",
+      "howToPlay": "在30秒内尽可能多地点击移动的目标。目标会在屏幕上随机移动,考验你的手眼协调能力和反应速度。"
+    },
+    "colorChange": {
+      "name": "颜色变化测试",
+      "description": "测试你对颜色变化的反应速度",
+      "howToPlay": "当方块变成绿色时,立即点击。不要在红色时点击,否则视为失败。测试你的视觉反应速度。"
+    },
+    "audioReact": {
+      "name": "音频反应测试",
+      "description": "听到声音后立即点击",
+      "howToPlay": "听到提示音后,立即点击屏幕。测试你的听觉反应速度。"
+    },
+    "directionReact": {
+      "name": "方向反应测试",
+      "description": "根据箭头方向快速做出反应",
+      "howToPlay": "根据屏幕上显示的箭头,按下对应的方向键。快速准确地做出反应,挑战你的判断力。"
+    },
+    "numberFlash": {
+      "name": "数字闪现测试",
+      "description": "记住闪现的数字并输入",
+      "howToPlay": "记住屏幕上短暂显示的数字。数字会快速闪现,考验你的瞬时记忆能力。"
+    },
+    "sequenceMemory": {
+      "name": "序列记忆测试",
+      "description": "记住序列的顺序",
+      "howToPlay": "记住方块的点亮顺序,并按相同顺序点击。每次成功后序列会变长,挑战你的记忆极限。"
+    }
+  },
+  "button": {
+    "start": "开始测试",
+    "retry": "重试",
+    "backHome": "返回首页",
+    "viewHistory": "查看历史",
+    "delete": "删除",
+    "clearAll": "清除所有记录",
+    "close": "关闭",
+    "login": "登录",
+    "register": "注册",
+    "logout": "退出"
+  },
+  "result": {
+    "title": "测试完成",
+    "totalClicks": "总点击数",
+    "accuracy": "准确率",
+    "avgReactionTime": "平均反应时间",
+    "fastestTime": "最快反应时间",
+    "correctCount": "正确数量",
+    "correctRate": "正确率",
+    "maxSequence": "最长序列",
+    "betterThan": "超过 {{percent}}% 的用户"
+  },
+  "history": {
+    "title": "测试历史",
+    "noRecords": "暂无测试记录",
+    "bestScore": "最佳成绩",
+    "allRecords": "所有记录",
+    "date": "日期",
+    "deleteConfirm": "确定要删除这条记录吗?",
+    "clearConfirm": "确定要清除所有记录吗?此操作不可恢复。"
+  },
+  "auth": {
+    "email": "邮箱",
+    "password": "密码",
+    "loginTitle": "登录账号",
+    "registerTitle": "注册账号",
+    "loginSuccess": "登录成功",
+    "registerSuccess": "注册成功",
+    "logoutSuccess": "退出成功"
+  },
+  "unit": {
+    "ms": "毫秒",
+    "times": "次"
+  }
+}

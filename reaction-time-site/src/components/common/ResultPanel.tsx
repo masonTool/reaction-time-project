@@ -1,12 +1,14 @@
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { getGradeInfo, formatTime } from '@/utils/grading'
+import { ScoreDistribution } from './ScoreDistribution'
+import { formatTime } from '@/utils/grading'
 import { cn } from '@/lib/utils'
-import type { GradeLevel } from '@/types/test'
+import type { TestType } from '@/types/test'
 
 interface ResultPanelProps {
   title: string
-  grade: GradeLevel
+  success?: boolean
   stats: {
     label: string
     value: string | number
@@ -14,29 +16,33 @@ interface ResultPanelProps {
   }[]
   onRetry: () => void
   onHome: () => void
+  testType?: TestType
+  scoreForDistribution?: {
+    value: number
+    key: 'averageTime' | 'totalClicks' | 'accuracy'
+  }
 }
 
 export function ResultPanel({
   title,
-  grade,
+  success = true,
   stats,
   onRetry,
   onHome,
+  testType,
+  scoreForDistribution,
 }: ResultPanelProps) {
-  const gradeInfo = getGradeInfo(grade)
+  const { t } = useTranslation()
 
   return (
-    <Card className="max-w-md mx-auto">
+    <Card className="max-w-2xl mx-auto">
       <CardHeader className="text-center">
         <CardTitle>{title}</CardTitle>
-        <div
-          className={cn(
-            'mt-4 inline-block px-6 py-2 rounded-full text-white font-bold text-lg',
-            gradeInfo.color
-          )}
-        >
-          {gradeInfo.name}
-        </div>
+        {!success && (
+          <div className="mt-4 inline-block px-6 py-2 rounded-full bg-red-500 text-white font-bold text-lg">
+            测试失败
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <div className="space-y-3 mb-6">
@@ -64,12 +70,22 @@ export function ResultPanel({
             </div>
           ))}
         </div>
-        <div className="flex gap-3">
+
+        {/* 成绩分布图 */}
+        {success && testType && scoreForDistribution && (
+          <ScoreDistribution
+            testType={testType}
+            userScore={scoreForDistribution.value}
+            scoreKey={scoreForDistribution.key}
+          />
+        )}
+
+        <div className="flex gap-3 mt-6">
           <Button onClick={onRetry} className="flex-1">
-            再试一次
+            {t('button.retry')}
           </Button>
           <Button onClick={onHome} variant="secondary" className="flex-1">
-            返回首页
+            {t('button.backHome')}
           </Button>
         </div>
       </CardContent>

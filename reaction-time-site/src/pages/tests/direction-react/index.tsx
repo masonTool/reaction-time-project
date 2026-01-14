@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ResultPanel } from '@/components/common/ResultPanel'
 import { Countdown } from '@/components/common/Countdown'
 import { useHistoryStore } from '@/stores/useHistoryStore'
-import { getGradeFromTime } from '@/utils/grading'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { randomInt, generateId } from '@/utils/random'
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react'
 
@@ -12,6 +13,7 @@ type Direction = 'up' | 'down' | 'left' | 'right'
 type GameState = 'idle' | 'countdown' | 'playing' | 'finished'
 
 const GAME_DURATION = 30
+const PENALTY_TIME = 1000 // 罚时1000ms (1秒)
 const DIRECTIONS: Direction[] = ['up', 'down', 'left', 'right']
 const DIRECTION_KEYS: Record<string, Direction> = {
   ArrowUp: 'up',
@@ -37,14 +39,18 @@ const DirectionIcon = ({ direction }: { direction: Direction }) => {
 
 export function DirectionReactTest() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const addResult = useHistoryStore((s) => s.addResult)
+  const user = useAuthStore((s) => s.user)
 
   const [gameState, setGameState] = useState<GameState>('idle')
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION)
   const [currentDirection, setCurrentDirection] = useState<Direction | null>(null)
   const [correctCount, setCorrectCount] = useState(0)
+  const [wrongCount, setWrongCount] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [lastReaction, setLastReaction] = useState<number | null>(null)
+  const [showPenalty, setShowPenalty] = useState(false)
   const [reactionTimes, setReactionTimes] = useState<number[]>([])
   const directionShownRef = useRef<number>(0)
 
@@ -62,8 +68,10 @@ export function DirectionReactTest() {
     setGameState('countdown')
     setTimeLeft(GAME_DURATION)
     setCorrectCount(0)
+    setWrongCount(0)
     setTotalCount(0)
     setLastReaction(null)
+    setShowPenalty(false)
     setReactionTimes([])
     setCurrentDirection(null)
   }, [])
@@ -86,8 +94,13 @@ export function DirectionReactTest() {
         setCorrectCount((prev) => prev + 1)
         setReactionTimes((prev) => [...prev, reactionTime])
         setLastReaction(reactionTime)
+        setShowPenalty(false)
       } else {
-        setLastReaction(null)
+        // 错误，罚时1000ms
+        setWrongCount((prev) => prev + 1)
+        setReactionTimes((prev) => [...prev, reactionTime + PENALTY_TIME])
+        setLastReaction(reactionTime)
+        setShowPenalty(true)
       }
 
       // 立刻显示下一个，且保证与当前方向不同
@@ -139,9 +152,8 @@ export function DirectionReactTest() {
         timestamp: Date.now(),
         averageTime: avgTime,
         accuracy,
-        totalClicks: totalCount,
-        grade: getGradeFromTime(avgTime),
-      })
+        grade: 'intermediate',
+      }, user?.id)
     }
   }, [gameState, correctCount, totalCount, reactionTimes, addResult])
 
@@ -153,13 +165,17 @@ export function DirectionReactTest() {
   if (gameState === 'finished') {
     return (
       <ResultPanel
-        title="方向反应测试完成"
-        grade={getGradeFromTime(averageTime)}
+        title={t('result.title')}
+        testType="direction-react"
+        scoreForDistribution={{
+          value: accuracy,
+          key: 'accuracy',
+        }}
         stats={[
-          { label: '正确次数', value: `${correctCount} 次`, highlight: true },
-          { label: '正确率', value: `${accuracy.toFixed(0)}%` },
-          { label: '平均反应时间', value: averageTime },
-          { label: '总反应次数', value: `${totalCount} 次` },
+          { label: t('result.correctRate'), value: `${accuracy.toFixed(0)}%`, highlight: true },
+          { label: t('result.avgReactionTime'), value: averageTime },
+          { label: '正确次数', value: `${correctCount}` },
+          { label: '错误次数', value: `${wrongCount}` },
         ]}
         onRetry={startCountdown}
         onHome={() => navigate('/')}
@@ -192,7 +208,17 @@ export function DirectionReactTest() {
               正确: {correctCount} / {totalCount}
             </div>
             <div className="text-lg text-gray-600">
-              {lastReaction !== null ? `${Math.round(lastReaction)}ms` : '-'}
+              {lastReaction !== null ? (
+                showPenalty ? (
+                  <span className="text-red-600">
+                    {Math.round(lastReaction)}ms + 1000ms罚时
+                  </span>
+                ) : (
+                  `${Math.round(lastReaction)}ms`
+                )
+              ) : (
+                '-'
+              )}
             </div>
             <div className="text-2xl font-bold text-cyan-600">{timeLeft}s</div>
           </div>

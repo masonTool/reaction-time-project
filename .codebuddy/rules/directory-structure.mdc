@@ -1,0 +1,229 @@
+---
+description: 前端目录结构规范 - 定义标准项目组织方式和文件命名规则
+alwaysApply: true
+enabled: true
+updatedAt: 2026-01-09T00:00:00.000Z
+provider: 
+---
+
+# 前端目录结构规范
+
+## 标准项目结构
+
+所有前端项目**必须**遵循以下目录结构：
+
+```
+project-root/
+├── public/                    # 静态资源（不经过构建）
+│   └── favicon.ico
+├── src/
+│   ├── components/            # 可复用组件
+│   │   ├── ui/                # 基础 UI 组件（shadcn/ui）
+│   │   └── common/            # 业务通用组件
+│   ├── pages/                 # 页面组件
+│   │   └── home/
+│   │       ├── index.tsx
+│   │       └── components/    # 页面私有组件
+│   ├── hooks/                 # 自定义 Hooks
+│   ├── stores/                # Zustand 状态管理
+│   ├── services/              # API 调用封装
+│   ├── types/                 # 全局类型定义
+│   ├── utils/                 # 工具函数
+│   ├── lib/                   # 第三方库配置
+│   ├── styles/                # 全局样式
+│   ├── constants/             # 常量定义
+│   ├── App.tsx                # 根组件
+│   ├── main.tsx               # 入口文件
+│   └── index.css              # 全局样式入口
+├── .codebuddy/                # CodeBuddy 配置
+│   └── rules/
+├── index.html
+├── package.json
+├── tsconfig.json
+├── tailwind.config.js
+├── vite.config.ts
+└── .gitignore
+```
+
+---
+
+## 目录职责说明
+
+### components/ - 可复用组件
+
+```
+components/
+├── ui/                        # shadcn/ui 组件（自动生成）
+│   ├── button.tsx
+│   ├── input.tsx
+│   └── dialog.tsx
+└── common/                    # 业务通用组件
+    ├── Header/
+    │   ├── index.tsx
+    │   └── HeaderNav.tsx
+    ├── Footer/
+    │   └── index.tsx
+    └── ErrorBoundary.tsx
+```
+
+**规则**：
+- `ui/` 目录由 shadcn/ui CLI 管理，不手动修改
+- `common/` 存放跨页面复用的业务组件
+- 复杂组件使用文件夹，简单组件使用单文件
+
+### pages/ - 页面组件
+
+```
+pages/
+├── home/
+│   ├── index.tsx              # 页面主组件
+│   └── components/            # 页面私有组件
+│       ├── HeroSection.tsx
+│       └── FeatureList.tsx
+├── dashboard/
+│   ├── index.tsx
+│   └── components/
+└── settings/
+    └── index.tsx
+```
+
+**规则**：
+- 每个页面一个文件夹
+- 页面私有组件放在 `components/` 子目录
+- 页面主组件命名为 `index.tsx`
+
+### hooks/ - 自定义 Hooks
+
+```
+hooks/
+├── useAuth.ts                 # 认证相关
+├── useDebounce.ts             # 防抖
+├── useLocalStorage.ts         # 本地存储
+└── useMediaQuery.ts           # 媒体查询
+```
+
+**规则**：
+- 文件名以 `use` 开头
+- 一个文件一个 Hook
+- 通用 Hook 放这里，页面专用 Hook 放页面目录
+
+### stores/ - 状态管理
+
+```
+stores/
+├── index.ts                   # 统一导出
+├── useAuthStore.ts            # 认证状态
+├── useUIStore.ts              # UI 状态
+└── useCartStore.ts            # 购物车状态
+```
+
+**规则**：
+- 文件名以 `use` 开头，以 `Store` 结尾
+- 按业务领域拆分 Store
+- 通过 `index.ts` 统一导出
+
+### services/ - API 调用
+
+```
+services/
+├── index.ts                   # 统一导出
+├── api.ts                     # 基础请求配置
+├── user.ts                    # 用户相关 API
+├── product.ts                 # 商品相关 API
+└── order.ts                   # 订单相关 API
+```
+
+**规则**：
+- 按业务领域拆分文件
+- 统一使用 SWR 的 fetcher 模式
+- 错误处理在 `api.ts` 中统一配置
+
+### types/ - 类型定义
+
+```
+types/
+├── index.ts                   # 统一导出
+├── user.ts                    # 用户相关类型
+├── product.ts                 # 商品相关类型
+├── api.ts                     # API 响应类型
+└── common.ts                  # 通用类型
+```
+
+**规则**：
+- 按业务领域拆分
+- 使用 `interface` 定义对象类型
+- 使用 `type` 定义联合类型和工具类型
+
+---
+
+## 文件命名规则
+
+| 类型 | 命名规则 | 示例 |
+|------|----------|------|
+| 组件文件 | PascalCase | `UserProfile.tsx` |
+| 组件文件夹 | PascalCase | `UserProfile/index.tsx` |
+| Hook 文件 | camelCase，use 前缀 | `useAuth.ts` |
+| Store 文件 | camelCase，use 前缀 + Store 后缀 | `useAuthStore.ts` |
+| 工具函数 | camelCase | `formatDate.ts` |
+| 类型文件 | camelCase | `user.ts` |
+| 常量文件 | camelCase | `routes.ts` |
+| 样式文件 | camelCase | `global.css` |
+
+---
+
+## 导入顺序规范
+
+文件内导入语句按以下顺序排列，组间空一行：
+
+```typescript
+// 1. React 相关
+import { useState, useEffect } from 'react'
+
+// 2. 第三方库
+import useSWR from 'swr'
+
+// 3. 内部模块（绝对路径）
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { useAuthStore } from '@/stores/useAuthStore'
+import { fetchUser } from '@/services/user'
+import type { User } from '@/types/user'
+
+// 4. 相对路径导入
+import { HeroSection } from './components/HeroSection'
+
+// 5. 样式文件
+import './styles.css'
+```
+
+---
+
+## 路径别名配置
+
+### vite.config.ts
+
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+})
+```
+
+### 使用示例
+
+```typescript
+// ✅ 正确：使用路径别名
+import { Button } from '@/components/ui/button'
+import { useAuthStore } from '@/stores/useAuthStore'
+
+// ❌ 错误：使用相对路径跨层级
+import { Button } from '../../../components/ui/button'
+```

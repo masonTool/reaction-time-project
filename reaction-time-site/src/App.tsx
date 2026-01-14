@@ -1,6 +1,14 @@
+import { useEffect } from 'react'
 import { AppRouter } from '@/router'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 function App() {
+  const initialize = useAuthStore((state) => state.initialize)
+
+  useEffect(() => {
+    initialize()
+  }, [initialize])
+
   return <AppRouter />
 }
 

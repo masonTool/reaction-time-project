@@ -23,8 +23,8 @@ export function Countdown({ onComplete }: CountdownProps) {
   if (count === 0) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="text-9xl font-bold text-white animate-pulse">{count}</div>
+    <div className="flex items-center justify-center h-96">
+      <div className="text-9xl font-bold text-blue-600 animate-pulse">{count}</div>
     </div>
   )
 }

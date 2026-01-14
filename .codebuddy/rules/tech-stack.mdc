@@ -1,0 +1,224 @@
+---
+description: 前端技术栈规范 - 定义核心技术选型和版本要求
+alwaysApply: true
+enabled: true
+updatedAt: 2026-01-09T00:00:00.000Z
+provider: 
+---
+
+# 前端技术栈规范
+
+## 核心技术栈
+
+| 类别 | 技术 | 版本要求 | 用途 |
+|------|------|----------|------|
+| 框架 | React | ^18.x | UI 框架 |
+| 构建工具 | Vite | ^5.x | 开发构建 |
+| 类型系统 | TypeScript | ^5.x | 类型安全 |
+| 样式方案 | Tailwind CSS | ^3.x | 原子化样式 |
+| 组件库 | shadcn/ui | latest | UI 组件 |
+| 路由 | React Router | ^6.x | 客户端路由 |
+| 数据获取 | SWR | ^2.x | 服务端状态 |
+| 状态管理 | Zustand | ^4.x | 客户端状态 |
+| 测试框架 | Vitest | ^2.x | 单元测试 |
+| 组件测试 | @testing-library/react | ^16.x | 组件测试 |
+
+---
+
+## 路由规范（React Router v6）
+
+### 路由配置
+
+```typescript
+// src/router/index.tsx
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { RootLayout } from '@/components/common/RootLayout'
+import { HomePage } from '@/pages/home'
+import { DashboardPage } from '@/pages/dashboard'
+import { NotFoundPage } from '@/pages/not-found'
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <RootLayout />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: 'dashboard', element: <DashboardPage /> },
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+])
+
+export function AppRouter() {
+  return <RouterProvider router={router} />
+}
+```
+
+### 路由使用
+
+```typescript
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+
+function UserPage() {
+  const { userId } = useParams<{ userId: string }>()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  
+  const handleBack = () => navigate(-1)
+  const handleGoHome = () => navigate('/')
+  
+  return <div>User: {userId}</div>
+}
+```
+
+### 路由守卫
+
+```typescript
+// components/common/ProtectedRoute.tsx
+import { Navigate, useLocation } from 'react-router-dom'
+import { useAuthStore } from '@/stores/useAuthStore'
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuthStore()
+  const location = useLocation()
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+  
+  return <>{children}</>
+}
+```
+
+---
+
+## 状态管理职责划分
+
+| 数据类型 | 使用工具 | 示例 |
+|----------|----------|------|
+| 服务端数据 | SWR | 用户列表、商品详情、API 响应 |
+| 客户端状态 | Zustand | 主题切换、侧边栏状态、表单草稿 |
+| 混合场景 | 两者配合 | 用户登录状态（SWR 获取 + Zustand 缓存） |
+
+### SWR 使用模式
+
+```typescript
+import useSWR from 'swr'
+
+const fetcher = (url: string) => fetch(url).then(res => res.json())
+
+function UserProfile({ userId }: { userId: string }) {
+  const { data, error, isLoading } = useSWR(`/api/users/${userId}`, fetcher)
+  
+  if (isLoading) return <Skeleton />
+  if (error) return <ErrorMessage error={error} />
+  return <Profile user={data} />
+}
+```
+
+### Zustand 使用模式
+
+```typescript
+import { create } from 'zustand'
+
+interface UIStore {
+  sidebarOpen: boolean
+  theme: 'light' | 'dark'
+  toggleSidebar: () => void
+  setTheme: (theme: 'light' | 'dark') => void
+}
+
+export const useUIStore = create<UIStore>((set) => ({
+  sidebarOpen: true,
+  theme: 'light',
+  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  setTheme: (theme) => set({ theme }),
+}))
+```
+
+---
+
+## 环境变量规范
+
+### 文件命名
+
+```
+.env                # 默认环境变量（提交到 Git）
+.env.local          # 本地覆盖（不提交）
+.env.development    # 开发环境
+.env.production     # 生产环境
+```
+
+### 变量命名
+
+```bash
+# .env
+VITE_API_BASE_URL=https://api.example.com
+VITE_APP_TITLE=My App
+VITE_ENABLE_MOCK=false
+```
+
+### 使用方式
+
+```typescript
+// 访问环境变量
+const apiUrl = import.meta.env.VITE_API_BASE_URL
+
+// 类型定义 - src/vite-env.d.ts
+interface ImportMetaEnv {
+  readonly VITE_API_BASE_URL: string
+  readonly VITE_APP_TITLE: string
+  readonly VITE_ENABLE_MOCK: string
+}
+```
+
+---
+
+## 配置文件
+
+### tailwind.config.js
+
+```javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  darkMode: 'class',
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: { extend: {} },
+  plugins: [require('tailwindcss-animate')],
+}
+```
+
+### tsconfig.json
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["src"]
+}
+```
+
+---
+
+## 禁止使用
+
+| 禁止项 | 原因 | 替代方案 |
+|--------|------|----------|
+| Redux | 过于复杂 | Zustand |
+| CSS Modules | 与 Tailwind 冲突 | Tailwind CSS |
+| axios | 非必要依赖 | fetch + SWR |
+| moment.js | 体积过大 | date-fns / dayjs |
+| lodash 全量引入 | 体积过大 | lodash-es 按需引入 |
+| any 类型 | 类型不安全 | 明确类型定义 |
+| React.FC | 类型推断问题 | 函数声明 + Props 类型 |
+| 内联 style 对象 | 不利于维护 | Tailwind 类名 |

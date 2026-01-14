@@ -1,10 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ResultPanel } from '@/components/common/ResultPanel'
 import { Countdown } from '@/components/common/Countdown'
 import { useHistoryStore } from '@/stores/useHistoryStore'
-import { getGradeFromTime } from '@/utils/grading'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { randomPosition, generateId } from '@/utils/random'
 import { cn } from '@/lib/utils'
 
@@ -15,7 +16,9 @@ const TARGET_SIZE = 50
 
 export function ClickTrackerTest() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const addResult = useHistoryStore((s) => s.addResult)
+  const user = useAuthStore((s) => s.user)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const [gameState, setGameState] = useState<GameState>('idle')
@@ -77,7 +80,6 @@ export function ClickTrackerTest() {
     if (gameState === 'finished' && reactionTimes.length > 0) {
       const avg =
         reactionTimes.reduce((a, b) => a + b, 0) / reactionTimes.length
-      const grade = getGradeFromTime(avg)
       addResult({
         id: generateId(),
         type: 'click-tracker',
@@ -85,9 +87,9 @@ export function ClickTrackerTest() {
         averageTime: avg,
         totalClicks: reactionTimes.length,
         fastestTime: Math.min(...reactionTimes),
-        slowestTime: Math.max(...reactionTimes),
-        grade,
-      })
+        accuracy: reactionTimes.length > 0 ? 100 : 0,
+        grade: 'intermediate',
+      }, user?.id)
     }
   }, [gameState, reactionTimes, addResult])
 
@@ -99,19 +101,16 @@ export function ClickTrackerTest() {
   if (gameState === 'finished') {
     return (
       <ResultPanel
-        title="点击追踪测试完成"
-        grade={getGradeFromTime(averageTime)}
+        title={t('result.title')}
+        testType="click-tracker"
+        scoreForDistribution={{
+          value: reactionTimes.length,
+          key: 'totalClicks',
+        }}
         stats={[
-          { label: '平均反应时间', value: averageTime, highlight: true },
-          { label: '总点击数', value: `${reactionTimes.length} 次` },
-          {
-            label: '最快反应',
-            value: reactionTimes.length > 0 ? Math.min(...reactionTimes) : 0,
-          },
-          {
-            label: '最慢反应',
-            value: reactionTimes.length > 0 ? Math.max(...reactionTimes) : 0,
-          },
+          { label: t('result.totalClicks'), value: `${reactionTimes.length}`, highlight: true },
+          { label: t('result.avgReactionTime'), value: averageTime },
+          { label: t('result.fastestTime'), value: reactionTimes.length > 0 ? Math.min(...reactionTimes) : 0 },
         ]}
         onRetry={startCountdown}
         onHome={() => navigate('/')}

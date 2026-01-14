@@ -10,9 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
+    "i18next": "^25.7.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-i18next": "^16.5.3",
     "react-router-dom": "^7.12.0",
+    "recharts": "^3.6.0",
     "zustand": "^5.0.10"
   },
   "devDependencies": {

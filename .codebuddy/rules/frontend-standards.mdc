@@ -1,0 +1,196 @@
+---
+description: 前端开发规范主文档 - AI 代码生成标准化指南
+alwaysApply: true
+enabled: true
+updatedAt: 2026-01-09T00:00:00.000Z
+provider: 
+---
+
+# 前端开发规范
+
+本规范定义了 AI 辅助前端开发的标准化实践，确保生成的代码一致、可维护、高质量。
+
+---
+
+## 规范索引
+
+| 规范文档 | 说明 | 适用场景 |
+|----------|------|----------|
+| [tech-stack.mdc](./tech-stack.mdc) | 技术栈规范 | 项目初始化、技术选型 |
+| [directory-structure.mdc](./directory-structure.mdc) | 目录结构规范 | 文件组织、模块划分 |
+| [coding-guidelines.mdc](./coding-guidelines.mdc) | 编码规范 | 代码风格、组件开发 |
+| [testing.mdc](./testing.mdc) | 测试规范 | 单元测试、组件测试 |
+| [git-workflow.mdc](./git-workflow.mdc) | Git 工作流规范 | 版本控制、协作流程 |
+
+---
+
+## 快速参考
+
+### 技术栈
+
+```
+React 18 + Vite 5 + TypeScript 5 + Tailwind CSS 3 + shadcn/ui + SWR 2 + Zustand 4 + React Router 6
+```
+
+### 项目结构
+
+```
+src/
+├── components/          # 可复用组件
+│   ├── ui/              # shadcn/ui 组件
+│   └── common/          # 业务通用组件
+├── pages/               # 页面组件
+├── hooks/               # 自定义 Hooks
+├── stores/              # Zustand 状态
+├── services/            # API 调用（SWR hooks）
+├── types/               # 类型定义
+├── utils/               # 工具函数
+└── lib/                 # 第三方库配置
+```
+
+### 核心原则
+
+1. **类型安全** - 所有代码必须使用 TypeScript，禁止 `any`
+2. **组件化** - 单一职责，小而专注
+3. **状态分离** - SWR 管理服务端数据，Zustand 管理客户端状态
+4. **样式统一** - 使用 Tailwind CSS + `cn()` 工具函数
+5. **代码简洁** - 避免过度设计，保持可读性
+
+---
+
+## 新项目初始化
+
+```bash
+# 1. 创建项目
+pnpm create vite@latest my-app --template react-ts
+cd my-app
+
+# 2. 安装核心依赖
+pnpm add react-router-dom swr zustand
+pnpm add -D tailwindcss postcss autoprefixer @types/react @types/react-dom
+
+# 3. 初始化 Tailwind + shadcn/ui
+pnpm dlx tailwindcss init -p
+pnpm dlx shadcn@latest init
+
+# 4. 创建目录结构
+mkdir -p src/{components/{ui,common},pages,hooks,stores,services,types,utils,lib}
+```
+
+### 路径别名配置
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+})
+```
+
+---
+
+## 代码生成规则
+
+### 组件模板
+
+```typescript
+interface ButtonProps {
+  /** 按钮变体 */
+  variant?: 'primary' | 'secondary'
+  /** 是否禁用 */
+  disabled?: boolean
+  onClick?: () => void
+  children: React.ReactNode
+  className?: string
+}
+
+function Button({ variant = 'primary', disabled = false, onClick, children, className }: ButtonProps) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        'px-4 py-2 rounded-md font-medium transition-colors',
+        variant === 'primary' && 'bg-blue-600 text-white hover:bg-blue-700',
+        variant === 'secondary' && 'bg-gray-200 text-gray-900 hover:bg-gray-300',
+        disabled && 'opacity-50 cursor-not-allowed',
+        className
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+export { Button }
+export type { ButtonProps }
+```
+
+### API Hook 模板
+
+```typescript
+// services/user.ts - SWR hooks 放在 services 目录
+import useSWR from 'swr'
+import { fetcher } from '@/lib/fetcher'
+import type { User } from '@/types/user'
+
+export function useUser(userId: string) {
+  return useSWR<User>(userId ? `/api/users/${userId}` : null, fetcher)
+}
+
+export function useUsers() {
+  return useSWR<User[]>('/api/users', fetcher)
+}
+```
+
+### Store 模板
+
+```typescript
+// stores/useAuthStore.ts
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import type { User } from '@/types/user'
+
+interface AuthState {
+  user: User | null
+  isAuthenticated: boolean
+  login: (user: User) => void
+  logout: () => void
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      isAuthenticated: false,
+      login: (user) => set({ user, isAuthenticated: true }),
+      logout: () => set({ user: null, isAuthenticated: false }),
+    }),
+    { name: 'auth-storage' }
+  )
+)
+```
+
+---
+
+## 检查清单
+
+生成代码后，AI 应自检：
+
+- [ ] 所有类型都已明确定义
+- [ ] 组件遵循单一职责
+- [ ] Props 包含 JSDoc 注释
+- [ ] 使用了路径别名 `@/`
+- [ ] 样式使用 Tailwind CSS + `cn()`
+- [ ] 事件处理函数以 `handle` 开头
+- [ ] 异步操作有错误处理
+- [ ] 无 ESLint 警告

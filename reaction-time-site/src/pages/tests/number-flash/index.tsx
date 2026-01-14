@@ -4,10 +4,9 @@ import { Button } from '@/components/ui/button'
 import { ResultPanel } from '@/components/common/ResultPanel'
 import { Countdown } from '@/components/common/Countdown'
 import { useHistoryStore } from '@/stores/useHistoryStore'
-import { getGradeFromTime } from '@/utils/grading'
-import { randomInt, generateId } from '@/utils/random'
+import { randomInt } from '@/utils/random'
 
-type GameState = 'idle' | 'countdown' | 'prepare' | 'showing' | 'input' | 'feedback' | 'finished'
+type GameState = 'idle' | 'countdown' | 'showing' | 'input' | 'feedback' | 'finished'
 
 const DIGITS_PER_ROUND = 5
 const INITIAL_FLASH_DURATION = 500 // 初始 500ms
@@ -25,7 +24,6 @@ export function NumberFlashTest() {
   const [currentNumber, setCurrentNumber] = useState('')
   const [userInput, setUserInput] = useState('')
   const [flashDuration, setFlashDuration] = useState(INITIAL_FLASH_DURATION)
-  const [prepareCountdown, setPrepareCountdown] = useState(3)
   const [feedback, setFeedback] = useState<{
     correct: boolean
     answer: string
@@ -62,39 +60,25 @@ export function NumberFlashTest() {
     const duration = getFlashDuration(round)
     setCurrentNumber(num)
     setFlashDuration(duration)
-    
-    // 先显示 3-2-1 倒计时
-    setGameState('prepare')
-    setPrepareCountdown(3)
-    
-    let countdown = 3
-    const countdownInterval = setInterval(() => {
-      countdown -= 1
-      setPrepareCountdown(countdown)
-      
-      if (countdown <= 0) {
-        clearInterval(countdownInterval)
-        setGameState('showing')
-        
-        // 显示数字
-        setTimeout(() => {
-          setGameState('input')
-          setUserInput('')
-          inputStartRef.current = performance.now()
-          setTimeout(() => inputRef.current?.focus(), 50)
-        }, duration)
-      }
-    }, 1000)
+    setGameState('countdown')
   }, [round, generateNumber, getFlashDuration])
+
+  const startShowing = useCallback(() => {
+    setGameState('showing')
+    
+    // 显示数字
+    setTimeout(() => {
+      setGameState('input')
+      setUserInput('')
+      inputStartRef.current = performance.now()
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }, flashDuration)
+  }, [flashDuration])
 
   const startCountdown = useCallback(() => {
     setRound(1)
     setFeedback(null)
     setGameState('idle')
-  }, [])
-
-  const startGame = useCallback(() => {
-    // 不需要这个函数了，直接从 idle 开始
   }, [])
 
   useEffect(() => {
@@ -106,7 +90,6 @@ export function NumberFlashTest() {
   const handleSubmit = useCallback(() => {
     if (gameState !== 'input') return
 
-    const reactionTime = performance.now() - inputStartRef.current
     const isCorrect = userInput === currentNumber
 
     setFeedback({ correct: isCorrect, answer: currentNumber })
@@ -128,17 +111,7 @@ export function NumberFlashTest() {
   }, [gameState, userInput, currentNumber])
 
   useEffect(() => {
-    if (gameState === 'finished') {
-      const score = round - 1 // 成功通过的轮数
-      
-      addResult({
-        id: generateId(),
-        type: 'number-flash',
-        timestamp: Date.now(),
-        score,
-        grade: score >= 13 ? 'SSS' : score >= 11 ? 'SS' : score >= 10 ? 'S' : score >= 9 ? 'A' : score >= 8 ? 'B' : score >= 6 ? 'C' : 'D',
-      })
-    }
+    // 不记录成绩，数字闪现是无尽模式
   }, [gameState, round, addResult])
 
   const score = round - 1 // 成功通过的轮数
@@ -146,10 +119,11 @@ export function NumberFlashTest() {
   if (gameState === 'finished') {
     return (
       <ResultPanel
-        title="数字闪现测试完成"
-        grade={score >= 13 ? 'SSS' : score >= 11 ? 'SS' : score >= 10 ? 'S' : score >= 9 ? 'A' : score >= 8 ? 'B' : score >= 6 ? 'C' : 'D'}
+        title="数字闪现测试"
+        success={false}
         stats={[
-          { label: '通过轮数', value: `${score} 轮`, highlight: true },
+          { label: '失败原因', value: '输入错误', highlight: true },
+          { label: '通过轮数', value: `${score} 轮` },
           { label: '最终显示时间', value: `${flashDuration}ms` },
           { label: '每轮数字个数', value: `${DIGITS_PER_ROUND} 位` },
         ]}
@@ -180,11 +154,7 @@ export function NumberFlashTest() {
           </div>
 
           <div className="bg-gray-100 dark:bg-gray-800 rounded-xl h-[500px] flex items-center justify-center">
-            {gameState === 'prepare' && (
-              <span className="text-9xl font-bold text-blue-600 animate-pulse">
-                {prepareCountdown}
-              </span>
-            )}
+            {gameState === 'countdown' && <Countdown onComplete={startShowing} />}
 
             {gameState === 'showing' && (
               <span className="text-8xl font-bold text-blue-500 tracking-widest">

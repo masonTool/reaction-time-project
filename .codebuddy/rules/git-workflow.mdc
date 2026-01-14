@@ -1,0 +1,283 @@
+---
+description: Git 工作流规范 - 分支策略和提交信息格式
+alwaysApply: true
+enabled: true
+updatedAt: 2026-01-09T00:00:00.000Z
+provider: 
+---
+
+# Git 工作流规范
+
+## 分支策略
+
+### 分支类型
+
+| 分支类型 | 命名格式 | 用途 | 示例 |
+|----------|----------|------|------|
+| 主分支 | `master` | 生产环境代码 | `master` |
+| 开发分支 | `develop` | 开发集成 | `develop` |
+| 功能分支 | `feature/<name>` | 新功能开发 | `feature/user-auth` |
+| 修复分支 | `fix/<name>` | Bug 修复 | `fix/login-error` |
+| 热修复 | `hotfix/<name>` | 生产紧急修复 | `hotfix/payment-crash` |
+| 发布分支 | `release/<version>` | 版本发布 | `release/v1.2.0` |
+
+### 分支命名规则
+
+```bash
+# ✅ 正确
+feature/user-authentication
+feature/add-shopping-cart
+fix/header-overflow
+fix/api-timeout-error
+hotfix/critical-security-patch
+
+# ❌ 错误
+Feature/UserAuth          # 不要用大写
+feature_user_auth         # 不要用下划线
+fix-bug                   # 描述不清晰
+my-branch                 # 缺少类型前缀
+```
+
+---
+
+## Commit 规范
+
+### 格式
+
+```
+<type>(<scope>): <subject>
+
+[body]
+
+[footer]
+```
+
+### Type 类型
+
+| 类型 | 说明 | 示例 |
+|------|------|------|
+| `feat` | 新功能 | `feat(auth): add login with Google` |
+| `fix` | Bug 修复 | `fix(cart): resolve quantity update issue` |
+| `docs` | 文档更新 | `docs(readme): update installation guide` |
+| `style` | 代码格式（不影响逻辑） | `style: format with prettier` |
+| `refactor` | 重构（不改变功能） | `refactor(api): simplify error handling` |
+| `perf` | 性能优化 | `perf(list): add virtualization` |
+| `test` | 测试相关 | `test(auth): add login unit tests` |
+| `chore` | 构建/工具变更 | `chore(deps): upgrade vite to v5` |
+| `ci` | CI 配置 | `ci: add GitHub Actions workflow` |
+
+### Scope 范围
+
+```bash
+# 按模块划分
+feat(auth): ...
+feat(cart): ...
+feat(payment): ...
+
+# 按层级划分
+feat(components): ...
+feat(hooks): ...
+feat(services): ...
+
+# 无 scope（影响全局）
+chore: upgrade dependencies
+```
+
+### Subject 规则
+
+- 使用英文
+- 使用动词原形开头
+- 首字母小写
+- 不加句号
+- 不超过 50 字符
+
+```bash
+# ✅ 正确
+feat(auth): add password reset functionality
+fix(ui): resolve button alignment issue
+refactor(api): simplify request interceptor
+
+# ❌ 错误
+feat(auth): Added password reset.     # 不要用过去式，不要加句号
+Fix: Button issue                      # type 要小写，描述不清晰
+feat: 添加登录功能                      # 使用英文
+```
+
+### Body（可选）
+
+用于详细说明：
+- 为什么做这个改动
+- 如何解决问题
+- 有什么副作用
+
+```bash
+fix(cart): resolve quantity update race condition
+
+The previous implementation allowed concurrent quantity updates
+which could result in incorrect totals. This fix adds optimistic
+locking to prevent race conditions.
+
+Closes #123
+```
+
+### Footer（可选）
+
+```bash
+# 关联 Issue
+Closes #123
+Fixes #456
+Refs #789
+
+# Breaking Change
+BREAKING CHANGE: API response format changed from array to object
+```
+
+---
+
+## 完整示例
+
+### 简单提交
+
+```bash
+git commit -m "feat(user): add avatar upload"
+git commit -m "fix(form): resolve validation error"
+git commit -m "docs: update API documentation"
+```
+
+### 详细提交
+
+```bash
+git commit -m "feat(auth): implement JWT refresh token
+
+- Add token refresh interceptor
+- Store refresh token in httpOnly cookie
+- Auto-refresh 5 minutes before expiry
+
+Closes #234"
+```
+
+---
+
+## 工作流程
+
+### 功能开发流程
+
+```bash
+# 1. 从 develop 创建功能分支
+git checkout develop
+git pull origin develop
+git checkout -b feature/user-profile
+
+# 2. 开发并提交
+git add .
+git commit -m "feat(profile): add avatar upload component"
+
+# 3. 推送并创建 PR
+git push origin feature/user-profile
+# 在 GitHub/GitLab 创建 Pull Request
+
+# 4. 合并后删除分支
+git checkout develop
+git pull origin develop
+git branch -d feature/user-profile
+```
+
+### Bug 修复流程
+
+```bash
+# 1. 从 develop 创建修复分支
+git checkout -b fix/login-error develop
+
+# 2. 修复并提交
+git commit -m "fix(auth): handle expired session gracefully"
+
+# 3. 推送并创建 PR
+git push origin fix/login-error
+```
+
+### 热修复流程
+
+```bash
+# 1. 从 master 创建热修复分支
+git checkout -b hotfix/security-patch master
+
+# 2. 修复并提交
+git commit -m "hotfix(security): patch XSS vulnerability"
+
+# 3. 合并到 master 和 develop
+git checkout master
+git merge hotfix/security-patch
+git checkout develop
+git merge hotfix/security-patch
+```
+
+---
+
+## PR/MR 规范
+
+### 标题格式
+
+```
+<type>(<scope>): <description>
+```
+
+### 描述模板
+
+```markdown
+## 变更说明
+简述本次变更的内容和目的
+
+## 变更类型
+- [ ] 新功能 (feat)
+- [ ] Bug 修复 (fix)
+- [ ] 重构 (refactor)
+- [ ] 文档 (docs)
+- [ ] 其他
+
+## 测试
+- [ ] 已添加单元测试
+- [ ] 已通过本地测试
+- [ ] 已验证边界条件
+
+## 截图（如适用）
+附上 UI 变更的截图
+
+## 关联 Issue
+Closes #xxx
+```
+
+---
+
+## Git Hooks（推荐）
+
+### 使用 husky + lint-staged
+
+```bash
+# 安装
+pnpm add -D husky lint-staged
+
+# 初始化
+pnpm dlx husky init
+```
+
+### .husky/pre-commit
+
+```bash
+pnpm lint-staged
+```
+
+### package.json
+
+```json
+{
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}
+```

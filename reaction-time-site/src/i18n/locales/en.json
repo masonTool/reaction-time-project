@@ -1,0 +1,88 @@
+{
+  "app": {
+    "title": "Reaction Test",
+    "subtitle": "Understand and improve your reaction speed, accuracy and cognitive abilities through various professional testing tools",
+    "footer": "Reaction Test - Improve Your Reaction Speed"
+  },
+  "nav": {
+    "home": "Home",
+    "history": "History"
+  },
+  "test": {
+    "clickTracker": {
+      "name": "Click Tracker Test",
+      "description": "Click moving targets as many as possible in 30 seconds",
+      "howToPlay": "Click moving targets as many as possible in 30 seconds. Targets will move randomly on the screen, testing your hand-eye coordination and reaction speed."
+    },
+    "colorChange": {
+      "name": "Color Change Test",
+      "description": "Test your reaction speed to color changes",
+      "howToPlay": "Click immediately when the square turns green. Don't click when it's red, or you'll fail. Test your visual reaction speed."
+    },
+    "audioReact": {
+      "name": "Audio Reaction Test",
+      "description": "Click immediately after hearing the sound",
+      "howToPlay": "Click the screen immediately after hearing the beep. Test your auditory reaction speed."
+    },
+    "directionReact": {
+      "name": "Direction Reaction Test",
+      "description": "React quickly according to arrow direction",
+      "howToPlay": "Press the corresponding direction key according to the arrow displayed on the screen. React quickly and accurately to challenge your judgment."
+    },
+    "numberFlash": {
+      "name": "Number Flash Test",
+      "description": "Remember and enter the flashing number",
+      "howToPlay": "Remember the number briefly displayed on the screen. Numbers will flash quickly, testing your instant memory ability."
+    },
+    "sequenceMemory": {
+      "name": "Sequence Memory Test",
+      "description": "Remember the order of the sequence",
+      "howToPlay": "Remember the order in which the blocks light up and click them in the same order. The sequence will get longer after each success, challenging your memory limit."
+    }
+  },
+  "button": {
+    "start": "Start Test",
+    "retry": "Retry",
+    "backHome": "Back to Home",
+    "viewHistory": "View History",
+    "delete": "Delete",
+    "clearAll": "Clear All Records",
+    "close": "Close",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout"
+  },
+  "result": {
+    "title": "Test Complete",
+    "totalClicks": "Total Clicks",
+    "accuracy": "Accuracy",
+    "avgReactionTime": "Avg Reaction Time",
+    "fastestTime": "Fastest Time",
+    "correctCount": "Correct Count",
+    "correctRate": "Correct Rate",
+    "maxSequence": "Max Sequence",
+    "betterThan": "Better than {{percent}}% of users"
+  },
+  "history": {
+    "title": "Test History",
+    "noRecords": "No test records yet",
+    "bestScore": "Best Score",
+    "allRecords": "All Records",
+    "date": "Date",
+    "deleteConfirm": "Are you sure you want to delete this record?",
+    "clearConfirm": "Are you sure you want to clear all records? This action cannot be undone."
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "loginTitle": "Login",
+    "registerTitle": "Register",
+    "loginSuccess": "Login successful",
+    "registerSuccess": "Registration successful",
+    "logoutSuccess": "Logout successful"
+  },
+  "unit": {
+    "ms": "ms",
+    "times": "times"
+  }
+}
