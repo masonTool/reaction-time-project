@@ -18,7 +18,10 @@ export interface TestResult {
   slowestTime?: number
   accuracy?: number
   score?: number
-  grade: GradeLevel
+  grade?: GradeLevel  // 弃用，仅向后兼容
+  percentile?: number  // 百分位排名 0-100
+  isPersonalBest?: boolean  // 是否为个人最优
+  keyMetrics?: Record<string, string | number>  // 关键指标缓存
 }
 
 export interface TestInfo {

@@ -1,4 +1,4 @@
-import type { GradeLevel } from '@/types/test'
+import type { GradeLevel, TestResult } from '@/types/test'
 
 export interface GradeInfo {
   level: GradeLevel
@@ -103,4 +103,36 @@ export function getGradeInfo(grade: GradeLevel): GradeInfo {
 
 export function formatTime(ms: number): string {
   return `${Math.round(ms)}ms`
+}
+
+/**
+ * 比较两个成绩的大小关系
+ * 返回正数表示 a 更好，负数表示 b 更好，0 表示相等
+ * 此函数用于排序和判断个人最优成绩
+ */
+export function compareScores(a: TestResult, b: TestResult): number {
+  switch (a.type) {
+    case 'color-change':
+    case 'audio-react':
+      // 平均时间越短越好
+      return (b.averageTime ?? Infinity) - (a.averageTime ?? Infinity)
+
+    case 'click-tracker':
+      // 总点击数越多越好
+      return (a.totalClicks ?? 0) - (b.totalClicks ?? 0)
+
+    case 'direction-react':
+      // 准确率越高越好，准确率相同则平均时间越短越好
+      const accDiff = (a.accuracy ?? 0) - (b.accuracy ?? 0)
+      if (Math.abs(accDiff) > 0.01) return accDiff
+      return (b.averageTime ?? Infinity) - (a.averageTime ?? Infinity)
+
+    case 'number-flash':
+    case 'sequence-memory':
+      // 分数越高越好
+      return (a.score ?? 0) - (b.score ?? 0)
+
+    default:
+      return 0
+  }
 }

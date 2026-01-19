@@ -118,8 +118,8 @@ export async function clearAllTestRecords(userId: string): Promise<void> {
  */
 export async function calculatePercentile(
   testType: string,
-  userScore: number,
-  scoreKey: 'averageTime' | 'totalClicks' | 'accuracy' = 'averageTime'
+  result: TestResult,
+  scoreKey: 'averageTime' | 'totalClicks' | 'accuracy' | 'score' = 'averageTime'
 ): Promise<number> {
   try {
     // 从公共数据池获取所有该类型的测试成绩
@@ -129,7 +129,21 @@ export async function calculatePercentile(
       .eq('test_type', testType)
 
     if (error) throw error
-    if (!data || data.length === 0) return 50 // 默认50%
+    if (!data || data.length === 0) return 50 // 默认 50%
+
+    // 获取用户的指标值
+    let userScore: number | undefined
+    if (scoreKey === 'averageTime') {
+      userScore = result.averageTime
+    } else if (scoreKey === 'totalClicks') {
+      userScore = result.totalClicks
+    } else if (scoreKey === 'accuracy') {
+      userScore = result.accuracy
+    } else if (scoreKey === 'score') {
+      userScore = result.score
+    }
+
+    if (userScore === undefined) return 50
 
     const scores = data
       .map((record) => record.score[scoreKey])
@@ -137,16 +151,17 @@ export async function calculatePercentile(
 
     if (scores.length === 0) return 50
 
-    // 对于时间类指标,越小越好
+    // 对于时间类指标，越小越好
+    // 对于计数和分数类指标，越大越好
     const isTimeMetric = scoreKey === 'averageTime'
     const betterThan = scores.filter((s) =>
-      isTimeMetric ? userScore < s : userScore > s
+      isTimeMetric ? userScore! < s : userScore! > s
     ).length
 
     const percentile = (betterThan / scores.length) * 100
 
-    // 小于1%时保留两位小数
-    return percentile < 1
+    // > 99% 时保留小数点后两位
+    return percentile > 99
       ? parseFloat(percentile.toFixed(2))
       : Math.round(percentile)
   } catch (error) {

@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { TestResult } from '@/types/test'
-import { uploadTestResult, deleteTestRecord, clearAllTestRecords } from '@/lib/dataSync'
+import { uploadTestResult, deleteTestRecord, clearAllTestRecords, calculatePercentile } from '@/lib/dataSync'
+import { compareScores } from '@/utils/grading'
+import { getKeyMetricName } from '@/utils/score-formatter'
 
 interface HistoryState {
   results: TestResult[]
@@ -11,6 +13,8 @@ interface HistoryState {
   getResultsByType: (type: TestResult['type']) => TestResult[]
   getBestResult: (type: TestResult['type']) => TestResult | undefined
   setResults: (results: TestResult[]) => void
+  isNewPersonalBest: (result: TestResult) => boolean
+  calculatePercentileForResult: (result: TestResult) => Promise<number>
 }
 
 export const useHistoryStore = create<HistoryState>()(
@@ -19,13 +23,26 @@ export const useHistoryStore = create<HistoryState>()(
       results: [],
 
       addResult: async (result, userId) => {
-        // 保存所有记录(不再只保存最佳记录)
+        // 判断是否为个人最优
+        const isPersonalBest = get().isNewPersonalBest(result)
+        
+        // 计算百分位
+        const percentile = await get().calculatePercentileForResult(result)
+        
+        // 增强结果对象
+        const enhancedResult: TestResult = {
+          ...result,
+          isPersonalBest,
+          percentile,
+        }
+
+        // 保存所有记录
         set((state) => ({
-          results: [result, ...state.results],
+          results: [enhancedResult, ...state.results],
         }))
 
-        // 上传到Supabase
-        await uploadTestResult(result, userId)
+        // 上传到 Supabase
+        await uploadTestResult(enhancedResult, userId)
       },
 
       deleteResult: async (resultId) => {
@@ -34,14 +51,14 @@ export const useHistoryStore = create<HistoryState>()(
           results: state.results.filter((r) => r.id !== resultId),
         }))
 
-        // 从Supabase删除
+        // 从 Supabase 删除
         await deleteTestRecord(resultId)
       },
 
       clearHistory: async (userId) => {
         set({ results: [] })
 
-        // 从Supabase清除
+        // 从 Supabase 清除
         if (userId) {
           await clearAllTestRecords(userId)
         }
@@ -51,47 +68,38 @@ export const useHistoryStore = create<HistoryState>()(
         const results = get().results.filter((r) => r.type === type)
         // 按成绩排序(从高到低)
         return results.sort((a, b) => {
-          return compareResults(b, a) // b和a反过来,实现降序
+          return compareScores(b, a) // b 和 a 反过来，实现降序
         })
       },
 
       getBestResult: (type) => {
         const results = get().getResultsByType(type)
-        return results[0] // 已排序,第一个就是最好的
+        return results[0] // 已排序，第一个就是最好的
       },
 
       setResults: (results) => set({ results }),
+
+      isNewPersonalBest: (result) => {
+        const previousBest = get().getBestResult(result.type)
+        // 如果没有之前的成绩，则为个人最优
+        if (!previousBest) return true
+        // 否则比较成绩
+        return compareScores(result, previousBest) > 0
+      },
+
+      calculatePercentileForResult: async (result) => {
+        try {
+          const metricName = getKeyMetricName(result)
+          const percentile = await calculatePercentile(result.type, result, metricName)
+          return percentile
+        } catch (error) {
+          console.error('Failed to calculate percentile:', error)
+          return 50 // 默认 50%
+        }
+      },
     }),
     {
       name: 'reaction-test-history',
     }
   )
 )
-
-// 比较两个成绩,返回正数表示a更好,负数表示b更好
-function compareResults(a: TestResult, b: TestResult): number {
-  switch (a.type) {
-    case 'color-change':
-    case 'audio-react':
-      // 平均时间越短越好
-      return (b.averageTime ?? Infinity) - (a.averageTime ?? Infinity)
-
-    case 'click-tracker':
-      // 总点击数越多越好
-      return (a.totalClicks ?? 0) - (b.totalClicks ?? 0)
-
-    case 'direction-react':
-      // 准确率越高越好,准确率相同则平均时间越短越好
-      const accDiff = (a.accuracy ?? 0) - (b.accuracy ?? 0)
-      if (Math.abs(accDiff) > 0.01) return accDiff
-      return (b.averageTime ?? Infinity) - (a.averageTime ?? Infinity)
-
-    case 'number-flash':
-    case 'sequence-memory':
-      // 分数越高越好
-      return (a.score ?? 0) - (b.score ?? 0)
-
-    default:
-      return 0
-  }
-}

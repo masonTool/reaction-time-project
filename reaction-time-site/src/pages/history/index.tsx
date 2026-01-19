@@ -5,10 +5,11 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ScoreDistribution } from '@/components/common/ScoreDistribution'
+import { TestScoreBrief } from '@/components/common/TestScoreBrief'
+import { TestScoreDetail } from '@/components/common/TestScoreDetail'
 import { TEST_INFO, type TestType } from '@/types/test'
-import { formatTime } from '@/utils/grading'
-import { cn } from '@/lib/utils'
-import { Trash2, X } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
+import { getKeyMetricName } from '@/utils/score-formatter'
 
 export function HistoryPage() {
   const { t } = useTranslation()
@@ -28,13 +29,8 @@ export function HistoryPage() {
     }
   }
 
-  const handleDeleteRecord = async (id: string) => {
-    if (window.confirm(t('history.deleteConfirm'))) {
-      await deleteResult(id)
-    }
-  }
-
   const selectedTestResults = selectedTest ? getResultsByType(selectedTest) : []
+  const selectedBestResult = selectedTest ? selectedTestResults[0] : null
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -53,7 +49,7 @@ export function HistoryPage() {
           <CardContent className="py-12 text-center">
             <p className="text-gray-500">{t('history.noRecords')}</p>
             <p className="text-sm text-gray-400 mt-2">
-              完成测试后,结果会显示在这里
+              完成测试后，结果会显示在这里
             </p>
           </CardContent>
         </Card>
@@ -63,154 +59,44 @@ export function HistoryPage() {
             if (!result) return null
 
             return (
-              <Card
+              <TestScoreBrief
                 key={test.id}
-                className="cursor-pointer hover:shadow-lg transition-shadow"
+                result={result}
+                testType={test.id}
                 onClick={() => setSelectedTest(test.id)}
-              >
-                <CardContent className="py-4">
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={cn(
-                        'w-12 h-12 rounded-lg flex items-center justify-center text-xl shrink-0',
-                        test.color
-                      )}
-                    >
-                      {test.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold mb-1">{t(`test.${test.i18nKey}.name`)}</h3>
-                      <div className="text-sm text-gray-600 space-y-0.5">
-                        {result.averageTime !== undefined && (
-                          <div>
-                            {t('result.avgReactionTime')}: {formatTime(result.averageTime)}
-                          </div>
-                        )}
-                        {result.totalClicks !== undefined && (
-                          <div>
-                            {t('result.totalClicks')}: {result.totalClicks}
-                          </div>
-                        )}
-                        {result.accuracy !== undefined && (
-                          <div>
-                            {t('result.accuracy')}: {result.accuracy.toFixed(0)}%
-                          </div>
-                        )}
-                        {result.score !== undefined && (
-                          <div>
-                            得分: {result.score}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-2">
-                        {new Date(result.timestamp).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                className="cursor-pointer"
+              />
             )
           })}
         </div>
       )}
 
       {/* 详细记录浮层 */}
-      {selectedTest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-2xl max-h-[80vh] overflow-auto relative">
-            <button
-              onClick={() => setSelectedTest(null)}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 z-10"
-            >
-              <X size={20} />
-            </button>
-
+      {selectedTest && selectedBestResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+          <Card className="w-full max-w-2xl my-8">
             <CardContent className="py-6">
-              <h2 className="text-xl font-bold mb-4">
-                {t(`test.${TEST_INFO[selectedTest].i18nKey}.name`)} - {t('history.allRecords')}
-              </h2>
-
-              <div className="space-y-3 mb-6">
-                {selectedTestResults.map((result, index) => (
-                  <div
-                    key={result.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold">#{index + 1}</span>
-                        {index === 0 && (
-                          <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full">
-                            {t('history.bestScore')}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-600 space-y-0.5">
-                        {result.averageTime !== undefined && (
-                          <div>
-                            {t('result.avgReactionTime')}: {formatTime(result.averageTime)}
-                          </div>
-                        )}
-                        {result.fastestTime !== undefined && (
-                          <div>
-                            {t('result.fastestTime')}: {formatTime(result.fastestTime)}
-                          </div>
-                        )}
-                        {result.totalClicks !== undefined && (
-                          <div>
-                            {t('result.totalClicks')}: {result.totalClicks}
-                          </div>
-                        )}
-                        {result.accuracy !== undefined && (
-                          <div>
-                            {t('result.accuracy')}: {result.accuracy.toFixed(0)}%
-                          </div>
-                        )}
-                        {result.score !== undefined && (
-                          <div>
-                            得分: {result.score}
-                          </div>
-                        )}
-                        <div className="text-xs text-gray-400">
-                          {new Date(result.timestamp).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteRecord(result.id)}
-                      className="text-red-500 hover:text-red-700 p-2"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {/* 最佳成绩的分布图 */}
-              {selectedTestResults.length > 0 && (() => {
-                const bestResult = selectedTestResults[0]
-                let scoreValue: number | undefined
-                let scoreKey: 'averageTime' | 'totalClicks' | 'accuracy' = 'averageTime'
-
-                if (selectedTest === 'click-tracker') {
-                  scoreValue = bestResult.totalClicks
-                  scoreKey = 'totalClicks'
-                } else if (selectedTest === 'direction-react') {
-                  scoreValue = bestResult.accuracy
-                  scoreKey = 'accuracy'
-                } else {
-                  scoreValue = bestResult.averageTime
-                  scoreKey = 'averageTime'
+              <TestScoreDetail
+                result={selectedBestResult}
+                testType={selectedTest}
+                onDelete={deleteResult}
+                onClose={() => setSelectedTest(null)}
+                showScoreDistribution={
+                  selectedTestResults.length > 0 ? (
+                    <ScoreDistribution
+                      testType={selectedTest}
+                      userScore={
+                        selectedBestResult.averageTime ??
+                        selectedBestResult.totalClicks ??
+                        selectedBestResult.accuracy ??
+                        selectedBestResult.score ??
+                        0
+                      }
+                      scoreKey={getKeyMetricName(selectedBestResult)}
+                    />
+                  ) : undefined
                 }
-
-                return scoreValue !== undefined ? (
-                  <ScoreDistribution
-                    testType={selectedTest}
-                    userScore={scoreValue}
-                    scoreKey={scoreKey}
-                  />
-                ) : null
-              })()}
+              />
             </CardContent>
           </Card>
         </div>
